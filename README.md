@@ -1,2 +1,2 @@
-# snmp-collector
+# snmpCG
 SNMP Charging Gateway 

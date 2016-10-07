@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>openCG</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Loading Bootstrap -->
+    <link href="css/vendor/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Loading Flat UI -->
+    <link href="css/flat-ui.min.css" rel="stylesheet">
+
+    <link rel="shortcut icon" href="img/favicon.ico">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+    <!--[if lt IE 9]>
+      <script src="js/vendor/html5shiv.js"></script>
+      <script src="js/vendor/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <nav class="navbar navbar-default">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="../index.html">openCG</a>
+        </div>
+        <ul class="nav navbar-nav">
+          <li class="active"><a href="../index.html">Sources</a></li>
+          <li><a href="../stats.html">Stats</a></li>
+          <li><a href="../search.html">Bulk search</a></li>
+        </ul>
+      </div>
+    </nav>
+    <div class="container">
+        <div id="source_add" class="alert alert-success alert-dismissible hidden" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            Source added.
+        </div>
+        <div class="btn-group" data-toggle="buttons">
+          <label id="filter_all" class="btn btn-primary active">
+            <input type="radio" name="options" id="option1" autocomplete="off" checked> All sourses
+          </label>
+          <label id="filter_success" class="btn btn-success">
+            <input type="radio" name="options" id="option2" autocomplete="off"> SUCCESS
+          </label>
+          <label id="filter_no_pdu" class="btn btn-danger">
+            <input type="radio" name="options" id="option3" autocomplete="off"> NO_PDU
+          </label>
+          <label id="filter_other_error" class="btn btn-info">
+            <input type="radio" name="options" id="option4" autocomplete="off"> OTHER_ERROR
+          </label>
+          <label id="filter_timeout" class="btn btn-warning">
+            <input type="radio" name="options" id="option5" autocomplete="off"> TIMEOUT
+          </label>
+          <label id="filter_unknown" class="btn btn-default">
+            <input type="radio" name="options" id="option6" autocomplete="off"> UNKNOWN
+          </label>
+        </div>
+        <table id = "tbl_data" class="table table-condensed">
+          <thead>
+            <tr>
+              <th>IP</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>  
+        </table>
+    </div>
+    <!-- /.container -->
+
+
+    <!-- jQuery (necessary for Flat UI's JavaScript plugins) -->
+    <script src="js/vendor/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="js/vendor/video.js"></script>
+    <script src="js/flat-ui.min.js"></script>
+    <script>
+      function validateIPaddress(ipaddress) {
+        if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {
+          return (true)
+        }
+        return (false)
+      }
+
+      function showNotif(message) {
+        $('#source_add').text(message.Status);
+        $('#source_add').removeClass('hidden');
+        setTimeout(function(){ $('#source_add').addClass('hidden'); }, 2000);
+        fillSourses("");
+      }
+
+      function addSource() {
+        var source = $('#new_source').val();
+        if (validateIPaddress(source)) {
+          $.ajax({
+            url: "http://192.168.103.221:9091/api/sources/"+source,
+            type: 'POST',
+            success: showNotif
+          });
+        } else {
+          showNotif({"Status" : "Wrong IP format: " + source});
+        }
+      }      
+
+      function deleteSource(source) {
+        console.log("http://192.168.103.221:9091/api/sources/"+source);
+        $.ajax({
+          url: "http://192.168.103.221:9091/api/sources/del/"+source,
+          success: showNotif
+        });
+      }
+
+      function fillSourses(filter) {
+        $.ajax({url: "http://192.168.103.221:9091/api/sources"+filter, success: function(result){
+            var sourses = result;
+            $("#tbl_data tbody tr").empty();
+            $("#tbl_data tbody").append('<tr> <td> <div class="input-group"> <span class="input-group-addon" id="basic-addon1">IP:</span> <input id="new_source" type="text" class="form-control" placeholder="" aria-describedby="basic-addon1"> </div> </td> <td></td> <td> <button type="button" class="btn btn-primary" onclick=\"addSource()\"> <span class="fui-plus-circle" aria-hidden="true"></span> Add </button> </td> </tr>');
+            var counters = {"SUCCESS" : 0, "NO_PDU" : 0, "OTHER_ERROR" : 0, "TIMEOUT" : 0, "UNKNOWN" : 0};
+            sourses.forEach(function(entry) {
+                var row_class = "";
+                if (entry.Status === "SUCCESS") {
+                    row_class = "class=\"success\"";
+                    counters["SUCCESS"] += 1;
+                } else if (entry.Status === "NO_PDU") {
+                    row_class = "class=\"danger\"";
+                    counters["NO_PDU"] += 1;
+                } else if (entry.Status === "OTHER_ERROR") {
+                    row_class = "class=\"info\"";
+                    counters["OTHER_ERROR"] += 1;
+                } else if (entry.Status === "TIMEOUT") {
+                    row_class = "class=\"warning\"";
+                    counters["TIMEOUT"] += 1;
+                } else {
+                    counters["UNKNOWN"] += 1;
+                }
+                var row = "<tr " + row_class + " >" + 
+                          "<td><a href=\"../interfaces.html?ip=" + entry.Ip + "\">" + entry.Ip + "</a></td>" + 
+                          "<td>" + entry.Status + "</td>" + 
+                          "<td><button type=\"button\" class=\"btn btn-danger\" onclick=\"deleteSource('" + entry.Ip + "');\"> <span class=\"fui-cross-circle\" aria-hidden=\"true\"></span> Delete </button></td>" + 
+                          "</tr>";
+                $("#tbl_data tbody").append(row);
+            });
+
+            $('#filter_success').text("SUCCESS (" + counters["SUCCESS"] + ")");
+            $('#filter_no_pdu').text("NO_PDU (" + counters["NO_PDU"] + ")");
+            $('#filter_other_error').text("OTHER_ERROR (" + counters["OTHER_ERROR"] + ")");
+            $('#filter_timeout').text("TIMEOUT (" + counters["TIMEOUT"] + ")");
+            $('#filter_unknown').text("UNKNOWN (" + counters["UNKNOWN"] + ")");
+
+        }});
+      };
+      $('#filter_all').on('click', function () {
+        fillSourses("");  
+      });
+      $('#filter_success').on('click', function () {
+        fillSourses("?SUCCESS");  
+      });
+      $('#filter_no_pdu').on('click', function () {
+        fillSourses("?NO_PDU");  
+      });
+      $('#filter_other_error').on('click', function () {
+        fillSourses("?OTHER_ERROR");  
+      });
+      $('#filter_timeout').on('click', function () {
+        fillSourses("?TIMEOUT");  
+      });
+      $('#filter_unknown').on('click', function () {
+        fillSourses("?UNKNOWN");  
+      });
+      fillSourses("");
+    </script>
+  </body>
+</html>
