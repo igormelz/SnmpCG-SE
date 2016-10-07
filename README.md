@@ -2,7 +2,7 @@
 SNMP Charging Gateway 
 
 ## Features 
-* Built-in [REST API](rest.md) to CRUD sources
+* Built-in [REST API](rest-api.txt) to CRUD sources
 * Run as single JavaApp for SNMP collect in/out counters from sources and out delta counters as csv CallDetailRecord
 * Logging all events and validate conditions i.e. status sources, overflow counters
 * Keep track    
