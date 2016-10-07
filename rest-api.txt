@@ -1,0 +1,12 @@
+# rest api 
+
+METHOD  URI                   RESPONSE_TYPE DESC
+-----------------------------------------------------------------------------------------------------
+GET     /api/sources          json(list)    get sources 
+GET     /api/sources?stats    json(map)     get validate stats                  
+GET     /api/sources?SUCCESS  json(list)    get list success validate sources 
+GET     /api/sources/{ip}     json(map)     get source status
+POST    /api/sources/{ip}     json(map)     add source to collector 
+DELETE  /api/sources/{ip}     json(map)     delete source from collector 
+GET     /api/counters         json(list)    get collector counters    
+GET     /api/counters/{ip}    json(map)     get counters for source

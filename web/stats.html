@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>openCG</title>
+    <title>snmpCG</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- Loading Bootstrap -->
@@ -23,12 +23,12 @@
     <nav class="navbar navbar-default">
       <div class="container">
         <div class="navbar-header">
-          <a class="navbar-brand" href="../index.html">openCG</a>
+          <a class="navbar-brand" href="index.html">snmpCG</a>
         </div>
         <ul class="nav navbar-nav">
-          <li><a href="../index.html">Sources</a></li>
-          <li class="active"><a href="../stats.html">Stats</a></li>
-          <li><a href="../search.html">Bulk search</a></li>
+          <li><a href="index.html">Sources</a></li>
+          <li class="active"><a href="stats.html">Stats</a></li>
+          <li><a href="search.html">Bulk search</a></li>
         </ul>
       </div>
     </nav>
@@ -73,7 +73,7 @@
     <script src="js/vendor/video.js"></script>
     <script src="js/flat-ui.min.js"></script>
     <script>
-      $.ajax({url: "http://192.168.103.221:9091/api/sources?stats", success: function(result){
+      $.ajax({url: "/api/sources?stats", success: function(result){
             var stats = result;
             $("#tbl_data tbody tr").empty();
             var success_row = "<tr class=\"success\"> <td>SUCCESS</td> <td>" + stats.SUCCESS + "</td> </tr>";

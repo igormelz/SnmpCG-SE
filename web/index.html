@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>openCG</title>
+    <title>snmpCG</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- Loading Bootstrap -->
@@ -23,12 +23,12 @@
     <nav class="navbar navbar-default">
       <div class="container">
         <div class="navbar-header">
-          <a class="navbar-brand" href="../index.html">openCG</a>
+          <a class="navbar-brand" href="index.html">snmpCG</a>
         </div>
         <ul class="nav navbar-nav">
-          <li class="active"><a href="../index.html">Sources</a></li>
-          <li><a href="../stats.html">Stats</a></li>
-          <li><a href="../search.html">Bulk search</a></li>
+          <li class="active"><a href="index.html">Sources</a></li>
+          <li><a href="stats.html">Stats</a></li>
+          <li><a href="search.html">Bulk search</a></li>
         </ul>
       </div>
     </nav>
@@ -96,7 +96,7 @@
         var source = $('#new_source').val();
         if (validateIPaddress(source)) {
           $.ajax({
-            url: "http://192.168.103.221:9091/api/sources/"+source,
+            url: "/api/sources/"+source,
             type: 'POST',
             success: showNotif
           });
@@ -106,15 +106,15 @@
       }      
 
       function deleteSource(source) {
-        console.log("http://192.168.103.221:9091/api/sources/"+source);
+        console.log("/api/sources/"+source);
         $.ajax({
-          url: "http://192.168.103.221:9091/api/sources/del/"+source,
+          url: "/api/sources/del/"+source,
           success: showNotif
         });
       }
 
       function fillSourses(filter) {
-        $.ajax({url: "http://192.168.103.221:9091/api/sources"+filter, success: function(result){
+        $.ajax({url: "/api/sources"+filter, success: function(result){
             var sourses = result;
             $("#tbl_data tbody tr").empty();
             $("#tbl_data tbody").append('<tr> <td> <div class="input-group"> <span class="input-group-addon" id="basic-addon1">IP:</span> <input id="new_source" type="text" class="form-control" placeholder="" aria-describedby="basic-addon1"> </div> </td> <td></td> <td> <button type="button" class="btn btn-primary" onclick=\"addSource()\"> <span class="fui-plus-circle" aria-hidden="true"></span> Add </button> </td> </tr>');

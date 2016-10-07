@@ -18,7 +18,7 @@
 		<property name="community" value="${snmp.community}" />
 		<property name="timeout" value="${snmp.timeout}" />
 		<property name="retries" value="${snmp.retries}" />
-		<property name="recoveryFileName" value="conf/recovery/router.dat" />
+		<property name="recoveryFileName" value="conf/recovery_router.dat" />
 	</bean>
 
 	<bean id="Counters" class="org.openfs.snmpcg.SourceCounters"
@@ -26,7 +26,7 @@
 		<property name="dateTimeFormat" value="${TimeStampFormat}" />
 		<property name="logFields" value="${log.fields}" />
 		<property name="cdrFields" value="${cdr.fields}" />
-		<property name="recoveryFileName" value="conf/recovery/cache.dat" />
+		<property name="recoveryFileName" value="conf/recovery_cache.dat" />
 	</bean>
 
 	<bean id="SNMPUtils" class="org.openfs.snmpcg.SnmpServiceWrapper" />
@@ -70,6 +70,9 @@
 			<get uri="/sources/del/{source}">
 				<to uri="direct:sourceDel" />
 			</get>
+			<delete uri="/sources/{source}">
+				<to uri="direct:sourceDel" />
+			</delete>
 			<!-- counters cache API -->
 			<get uri="/counters/">
 				<!-- get all cache or modified by query: (?size) as (CamelHttpQuery) -->

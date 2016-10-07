@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>openCG</title>
+    <title>snmpCG</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- Loading Bootstrap -->
@@ -23,12 +23,12 @@
     <nav class="navbar navbar-default">
       <div class="container">
         <div class="navbar-header">
-          <a class="navbar-brand" href="../index.html">openCG</a>
+          <a class="navbar-brand" href="index.html">snmpCG</a>
         </div>
         <ul class="nav navbar-nav">
-          <li><a href="../index.html">Sources</a></li>
-          <li><a href="../stats.html">Stats</a></li>
-          <li class="active"><a href="../search.html">Bulk search</a></li>
+          <li><a href="index.html">Sources</a></li>
+          <li><a href="stats.html">Stats</a></li>
+          <li class="active"><a href="search.html">Bulk search</a></li>
         </ul>
       </div>
     </nav>
@@ -71,7 +71,7 @@
         var source_string = $('#search_sourses').val();
         var res = source_string.split("\n");
         res.forEach(function(source) {
-          $.ajax({url: "http://192.168.103.221:9091/api/counters/"+source, success: function(result){
+          $.ajax({url: "/api/counters/"+source, success: function(result){
             var row = "<tr class=\"active\"> <td>" + source + "</td> <td></td> </tr>\n";
             if (result instanceof Array) {
               result.forEach(function(ifase) {
