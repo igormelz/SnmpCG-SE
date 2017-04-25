@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon'/>
+
+    <title>SnmpCG - Admin Interface</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/vendor/bootstrap.min.css" rel="stylesheet">
+    <link href="css/dataTables.bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+    <!--[if lt IE 9]>
+      <script src="js/vendor/html5shiv.js"></script>
+      <script src="js/vendor/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <nav class="navbar navbar-default">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="index.html">SnmpCG</a>
+        </div>
+        <ul class="nav navbar-nav">
+          <li><a href="index.html">Sources</a></li>
+        </ul>
+      </div>
+    </nav>
+    <div class="container">
+    	<div class="row">
+        	<h2>View source </span><span id="ip_span" class="label label-default"></span></h2>
+        </div>
+        <div class="row">
+        	<div class="col-md-8">
+        	<table id="tbl" class="table table-condensed">
+        	<tbody>
+        	</table>
+        	</div>
+        </div>
+        <div class="row">
+          <h3>ifTable</h3>
+		  <table id="ifTable" class="table table-condensed">
+          <thead>
+            <tr>
+              <th>IfDescr</th>
+              <th>IfName</th>
+              <th>IfAlias</th>
+              <th>IfAdminStatus</th>
+              <th>IfOperStatus</th>
+              <th>pollInOctets</th>
+              <th>pollOutOctets</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>  
+        </table>
+		</div>
+    </div>
+    <!-- /.container -->
+
+    <!-- jQuery (necessary for Flat UI's JavaScript plugins) -->
+    <script src="js/vendor/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="js/datatables.min.js"></script>
+    <!-- script src="js/jquery.dataTables.min.js"></script -->
+    <script src="js/dataTables.bootstrap.min.js"></script>
+    <script>
+        function getUrlParameter(sParam) {
+            var sPageURL = window.location.search.substring(1);
+            var sURLVariables = sPageURL.split('&');
+            for (var i = 0; i < sURLVariables.length; i++) {
+                var sParameterName = sURLVariables[i].split('=');
+                if (sParameterName[0] == sParam) {
+                    return sParameterName[1];
+                }
+            }
+        }
+
+    var ip = getUrlParameter("ip");
+    
+    $("#ip_span").text(ip);
+    
+    $.ajax({
+    	url: "/api/v1/sources/"+ip,
+    	success: function(source){
+            $("#tbl tbody tr").empty();
+            $("#tbl tbody").append("<tr><th>systemName</th><td>" + source.sysName + "</td></tr>");
+            $("#tbl tbody").append("<tr><th>systemDescr</th><td><small>" + source.sysDescr + "</small></td></tr>");
+            $("#tbl tbody").append("<tr><th>pollStatus</th><td>" + source.Status + "</td></tr>");
+            $("#tbl tbody").append("<tr><th>ifNumber</th><td>" + source.ifNumber + "</td></tr>");
+         }
+    });
+       
+ 	$('#ifTable').DataTable({
+       ajax: {
+        url: "/api/v1/sources/"+ip+"/interfaces",
+        dataSrc: '' 
+       },
+       columns: [
+       	{ data: "ifDescr" },
+       	{ data: "ifName" },
+       	{ data: "ifAlias" },
+       	{ data: "ifAdminStatus" },
+       	{ data: "ifOperStatus" },
+       	{ data: "pollInOctets" },
+       	{ data: "pollOutOctets" }
+       ]
+    });
+
+    </script>
+  </body>
+</html>

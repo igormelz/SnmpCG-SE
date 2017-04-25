@@ -1,13 +1,19 @@
-# snmpCG
-SNMP Charging Gateway 
+# SnmpCG: SNMP Charging Gateway 
 
-## Features 
-* Built-in [REST API](rest-api.txt) to CRUD sources
-* Run as single JavaApp for SNMP collect in/out counters from sources and out delta counters as csv CallDetailRecord
-* Logging all events and validate conditions i.e. status sources, overflow counters
-* Keep track    
+Dynamic SNMP collector with scheduled poll counters and generate charging data records (CDR) on delta counters value.  
+
+## Features
+* High performance collecting
+* Built-in [REST API](rest-api.txt) for managing and provisioning the source list
+* Logging events polling counters and validate source status
+* Handle exceptions for counters overflow, reboot routers, restore after timeouts 
+* Tracing counters for selected interface 
 
 ## Release Notes
+
+### 5.0.0:
+* refactoring to spring-boot application
+* redesign Admin UI
 
 ### 4.0.3:
 * fix url in web 

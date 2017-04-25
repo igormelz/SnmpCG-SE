@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon'/>
+
+    <title>SnmpCG - Admin Interface</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/vendor/bootstrap.min.css" rel="stylesheet">
+    <link href="css/dataTables.bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+    <!--[if lt IE 9]>
+      <script src="js/vendor/html5shiv.js"></script>
+      <script src="js/vendor/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+  	 <!-- Navigation -->
+    <nav class="navbar navbar-default" role="navigation">
+      <div class="container">
+      	<!-- brand -->
+        <div class="navbar-header">
+         <a class="navbar-brand" href="index.html">SnmpCG</a>
+        </div>  
+        <!-- nav links -->
+        <ul class="nav navbar-nav">
+          <li class="active"><a href="#">Sources</a></li>
+        </ul>
+      </div>
+      <!-- /.container -->
+    </nav>
+    
+    <!-- page content -->
+    <div class="container">
+    	<div class="row">
+        	<div id="source_add" class="alert alert-success alert-dismissible hidden" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            Source added.
+        	</div>
+        </div>
+
+		<div class="row">
+			<div class="col-md-6">
+		    	<div class="btn-group" data-toggle="buttons">
+          			<button id="filter_all" class="btn btn-primary active">
+            			View all
+          			</button>
+          			<button id="filter_success" class="btn btn-default" type="button">
+            			SUCCESS <span id="successVal" class="badge info">0</span>
+          			</button>
+          			<button id="filter_timeout" class="btn btn-warning">
+            			TIMEOUT <span id="timeoutVal" class="badge">0</span>
+          			</button>
+          			<button id="filter_unknown" class="btn btn-default">
+            			UNKNOWN <span id="unknownVal" class="badge">0</span>
+          			</button>
+		   		</div>
+		   	</div>
+		    <div class="col-md-6">
+        		<form class="form-inline">
+					<div class="form-group">
+						<!-- span class="input-group-addon" id="basic-addon1">IP:</span -->
+						<input id="new_source" type="text" class="form-control" placeholder="0.0.0.0" aria-describedby="basic-addon1">
+					</div>
+					<div class="form-group">
+						<!-- span class="input-group-addon" id="basic-addon2">Community:</span -->
+						<input id="community" type="text" class="form-control" placeholder="community" aria-describedby="basic-addon1">
+					</div>
+					<button class="btn btn-primary" type="submit" onclick="addSource()">Add</button>  
+        		</form>
+		    </div>
+		</div>
+		<div class="row">
+        	<h1 id="tbl_title">List all sources</h1>
+        </div>
+        <div class="row">
+        <table id = "tbl_data" class="table table-condensed">
+          <thead>
+            <tr>
+              <th>Address</th>
+              <th>sysName</th>
+              <th>Status</th>
+              <th>ifNumber</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>  
+        </table>
+        </div>
+    </div>
+    <!-- /.container -->
+
+    <!-- jQuery (necessary for Flat UI's JavaScript plugins) -->
+    <script src="js/vendor/jquery.min.js"></script>
+    <script src="js/datatables.min.js"></script>
+    <!-- script src="js/jquery.dataTables.min.js"></script -->
+    <script src="js/dataTables.bootstrap.min.js"></script>
+    <script>
+      function validateIPaddress(ipaddress) {
+        if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {
+          return (true)
+        }
+        return (false)
+      }
+
+      function showNotif(message) {
+        $('#source_add').text(message.Status);
+        $('#source_add').removeClass('hidden');
+        setTimeout(function(){ $('#source_add').addClass('hidden'); }, 5000);
+        fillSourses("");
+        //clear input 
+        $('#new_source').val('');
+        $('#community').val('');
+      }
+
+      function addSource() {
+        var source = $('#new_source').val();
+        var community = $('#community').val();
+        var queryStr = '';
+        if (community != null && community != '') {
+        	queryStr = "?"+community;       
+        }
+        if (validateIPaddress(source)) {
+          $.ajax({
+            url: "/api/v1/sources/"+source+queryStr,
+            type: 'POST',
+            success: showNotif
+          });
+        } else {
+          showNotif({"Status" : "Wrong IP format: " + source});
+        }
+      }      
+
+      function deleteSource(source) {
+        console.log("/api/v1/sources/"+source);
+        $.ajax({
+          url: "/api/v1/sources/del/"+source,
+          success: showNotif
+        });
+      }
+
+	// fill counter
+	function fillCounter(){
+	$.ajax({
+          url: "/api/v1/sources?stats",
+          success: function(stats) {
+          	$('#successVal').text(stats.SUCCESS);
+          	$('#timeoutVal').text(stats.TIMEOUT);
+          	$('#unknownVal').text(stats.UNKNOWN);
+          }
+        });
+    }
+
+	var table = $('#tbl_data').DataTable({
+       ajax: {
+        url: "/api/v1/sources",
+        dataSrc: function(sources) {
+          sources.forEach(function(source){
+            source.Ip = "<a href=\"view.html?ip=" + source.Ip + "\">"+source.Ip+"</a>";;
+          });
+          return sources;
+        }
+       },
+       columns: [
+        { data: "Ip" },
+        { data: "sysName" },
+        { data: "Status" },
+        { data: "ifNumber" }
+       ]
+    });
+
+      $('#filter_all').on('click', function () {
+      	fillCounter();
+        table.ajax.url('/api/v1/sources').load();  
+      });
+      $('#filter_success').on('click', function () {
+      	fillCounter();
+        table.ajax.url('/api/v1/sources?status=SUCCESS').load();
+      });
+      $('#filter_timeout').on('click', function () {
+      	fillCounter();
+        table.ajax.url('/api/v1/sources?status=TIMEOUT').load();  
+      });
+      $('#filter_unknown').on('click', function () {
+      	fillCounter();
+        table.ajax.url('/api/v1/sources?status=UNKNOWN').load(); 
+      });
+      
+      // onLoad
+      fillCounter();
+      
+    </script>
+  </body>
+</html>
