@@ -3,12 +3,13 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.openfs</groupId>
-  <artifactId>snmpcg</artifactId>
-  <version>4.0.3-SNAPSHOT</version>
+  <artifactId>openfs-snmpcg</artifactId>
+  <version>4.0.3</version>
   <packaging>jar</packaging>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <camel.version>2.18.0</camel.version>
   </properties>
 
   <dependencies>
@@ -16,37 +17,37 @@
   <dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-spring</artifactId>
-			<version>2.17.3</version>
+			<version>${camel.version}</version>
 		</dependency>
  
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-snmp</artifactId>
-			<version>2.17.3</version>
+			<version>${camel.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-quartz2</artifactId>
-			<version>2.17.3</version>
+			<version>${camel.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-csv</artifactId>
-			<version>2.17.3</version>
+			<version>${camel.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-jackson</artifactId>
-			<version>2.17.3</version>
+			<version>${camel.version}</version>
 		</dependency>
 		
 		<dependency>
 			<groupId>org.apache.camel</groupId>
 			<artifactId>camel-jetty</artifactId>
-			<version>2.17.3</version>
+			<version>${camel.version}</version>
 		</dependency>
   
   <!-- for logging using log4j.properties in src/main/resources -->

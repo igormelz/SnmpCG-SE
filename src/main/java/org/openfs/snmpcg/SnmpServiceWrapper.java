@@ -34,8 +34,8 @@ public class SnmpServiceWrapper {
 	private static final String out32 = ".1.3.6.1.2.1.2.2.1.16.";
 	private static final String in64 = ".1.3.6.1.2.1.31.1.1.1.6.";
 	private static final String out64 = ".1.3.6.1.2.1.31.1.1.1.10.";
-	private static final String operStatus = ".1.3.6.1.2.1.2.2.1.8";
-	private static final String adminStatus = ".1.3.6.1.2.1.2.2.1.7";
+	//private static final String operStatus = ".1.3.6.1.2.1.2.2.1.8";
+	//private static final String adminStatus = ".1.3.6.1.2.1.2.2.1.7";
 
 	private OID pollCounterOIDs[] = new OID[] {
 	/* 0 */new OID(sysUptimeT),

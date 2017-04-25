@@ -101,12 +101,14 @@
 		<route id="restSourceAdd">
 			<from uri="direct:sourceAdd" />
 			<bean ref="Sources" method="restAddSource" />
+			<log message="REST: ${body}" />
 		</route>
 
 		<route id="restSourceDel">
 			<from uri="direct:sourceDel" />
 			<bean ref="Sources" method="restDelSource" />
 			<bean ref="Counters" method="restClearIpCache" />
+			<log message="REST: ${body}" />
 		</route>
 
 		<route id="restGetCounters">
@@ -125,6 +127,7 @@
 		<threadPoolProfile id="pollCounterProfile" poolSize="{{poll.Threads}}"
 			maxPoolSize="{{poll.maxThreads}}" maxQueueSize="-1" />
 
+<!--  
 		<route id="initSrcData">
 			<from uri="file:in?maxMessagesPerPoll=1&amp;delay=30000" />
 			<convertBodyTo type="java.lang.String" />
@@ -136,10 +139,9 @@
 			<log message="start validate (${header.CamelSnmpListSize}) sources" />
 			<to uri="direct:validate" />
 		</route>
-
-		<route id="checkSrcData">
-			<!-- from uri="timer://validate?delay=300000&amp;period={{validate.period}}" 
-				/ -->
+ -->
+ 
+		<route id="validateSources">
 			<from uri="timer://validate?period={{validate.period}}" />
 			<bean ref="Sources" method="getDownSources" />
 			<filter>
@@ -147,21 +149,14 @@
 				<log message="skip validate. all source is up" />
 				<stop />
 			</filter>
-			<to uri="direct:validate" />
-		</route>
-
-		<route id="validate">
-			<from uri="direct:validate" />
 			<split strategyRef="ValidateAggregator" parallelProcessing="true">
 				<simple>${header.CamelSnmpSources}</simple>
 				<bean ref="SNMPUtils" method="getSnmpStatus" />
 				<bean ref="Sources" method="validateSnmpStatus" />
+				<log message="${routeId}: ${header.CamelSnmpSource} is ${header.CamelSnmpSourceStatus}" />
 			</split>
-			<log
-				message="validated source up (${header.CamelSnmpUpCounter}) down (${header.CamelSnmpDownCounter})" />
+			<log message="${routeId}: total up:${header.CamelSnmpUpCounter} down:${header.CamelSnmpDownCounter}" />
 			<bean ref="Sources" method="logValidate" />
-			<to uri="file:log?fileName=validate_${date:now:yyyyMMddHHmmss}.log" />
-			<log message="flush to: ${header.CamelFileNameProduced}" />
 		</route>
 
 		<route id="snmpPoll">
@@ -172,21 +167,35 @@
 				<log message="is all sources down?" loggingLevel="WARN" />
 				<stop />
 			</filter>
-			<log message="start poll (${header.CamelSnmpListSize}) sources" />
+			<log message="${routeId}: start (${header.CamelSnmpListSize}) sources" />
 			<split parallelProcessing="true" strategyRef="PollAggregator"
 				executorServiceRef="pollCounterProfile" parallelAggregate="true">
 				<simple>${header.CamelSnmpSources}</simple>
 				<bean ref="SNMPUtils" method="getSnmpCounters" />
-				<log message="end poll from:${header.CamelSnmpSource} uptime:${header.CamelSnmpUptime} status:${header.CamelSnmpSourceStatus} counters:${header.CamelSnmpListSize}" />
+				<log message="${routeId}: ${header.CamelSnmpSource} uptime:${header.CamelSnmpUptime} status:${header.CamelSnmpSourceStatus} counters:${header.CamelSnmpListSize}" />
 				<bean ref="Sources" method="validateSnmpStatus" />
 			</split>
-			<log message="end poll" />
+			<log message="${routeId}: end" />
 			<multicast>
 				<to uri="direct:logCounters" />
 				<to uri="direct:processCounters" />
 			</multicast>
 		</route>
   
+  
+  <route id="logPoll">
+  	<from uri="direct:logCounters"/>
+  	<split>
+  		<simple>${body}</simple>
+  		<split>
+  			<simple>${body}</simple>
+  			<setBody><simple>${body.getIpAddress()},${body.getSnmpDescr()},${body.getSnmpIn().getValue()},${body.getSnmpOut().getValue()},${body.getPollTime()}\n</simple></setBody>
+  			<to uri="file:out/counter?fileName=${date:now:yyyyMMddHHmm00}.txt&amp;fileExist=Append" />
+  		</split>
+  	</split>
+  </route>
+  
+  <!-- 
 		<route id="logPoll">
 			<from uri="direct:logCounters" />
 			<bean ref="Counters" method="logListCounters" />
@@ -199,7 +208,8 @@
 			<to uri="file:out/counter?fileName=${date:now:yyyyMMddHHmmss}.txt.gz" />
 			<log message="flush counters to: ${headers.CamelFileNameProduced}" />
 		</route>
- 
+  -->
+  
 		<route id="deltaPoll">
 			<from uri="direct:processCounters" />
 			<split strategyRef="DeltaAggregator">

@@ -19,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.CommunityTarget;
 import org.snmp4j.smi.IpAddress;
-
 import org.openfs.snmpcg.sources.PollStatus;
 import org.openfs.snmpcg.sources.SnmpStatus;
 import org.openfs.snmpcg.utils.SnmpTargetFactory;
@@ -323,9 +322,17 @@ public class SourceInventory {
 		else if (srcData.containsKey(ip.toString()))
 			sb.append("source ").append(host).append(" allready exists");
 		else {
+			// add host entry 
 			Map<String, Object> status = new HashMap<String, Object>(1);
 			status.put("Status", SnmpStatus.UNKNOWN);
 			status.put("HostName", ip.getInetAddress().getHostName());
+			// parse body
+			@SuppressWarnings("unchecked")
+			Map<String,String> mb = (Map<String, String>) ex.getIn().getBody();
+			if (mb != null && mb.containsKey("Community"))
+				status.put("Community", mb.get("Community"));
+			else 
+				status.put("Community", community);			
 			srcData.put(ip.toString(), status);
 			// srcData.put(ip.toString(), SnmpStatus.SUCCESS);
 			sb.append("source ").append(host).append(" add to list");

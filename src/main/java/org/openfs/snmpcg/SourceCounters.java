@@ -34,10 +34,6 @@ public class SourceCounters {
 	private CsvField[] logCounterHeaders;
 	private CsvField[] cdrCounterHeaders;
 	private String recoveryFileName;
-	private String influxURL;
-	private String influxUser;
-	private String influxPass;
-
 	// private Map<String, Map<CsvField,Object>> cache = new
 	// ConcurrentHashMap<String, Map<CsvField,Object>>(10000);
 	private Map<String, Map<String, Map<CsvField, Object>>> cache = new ConcurrentHashMap<String, Map<String, Map<CsvField, Object>>>();
@@ -59,18 +55,15 @@ public class SourceCounters {
 	}
 
 	public void setinfluxURL(String u) {
-		if (u.startsWith("http"))
-			influxURL = u;
-		else
-			influxURL = null;
+		if (u.startsWith("http")) {
+		} else {
+		}
 	}
 
 	public void setinfluxUser(String u) {
-		influxUser = u;
 	}
 
 	public void setinfluxPass(String u) {
-		influxPass = u;
 	}
 
 	@Handler
