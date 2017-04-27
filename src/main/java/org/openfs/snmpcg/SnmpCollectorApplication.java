@@ -91,14 +91,13 @@ public class SnmpCollectorApplication {
 			.to("direct:pollStatus");
 			
 			from("direct:pollStatus")
-				.split(method("sources", "getDownSources"))
-						.bean(SnmpUtils.class, "pollStatus")
+				.split(method("sources", "getDownSources")).parallelProcessing()
+					.bean(SnmpUtils.class, "pollStatus")
 				.end();
 			
 			// scheduled poll counters
 			from("quartz2://snmp/poll?cron=0+0/5+*+*+*+?").routeId("pollCounters")
-					.split(method("sources", "getReadySources"))
-						.parallelProcessing()
+					.split(method("sources", "getReadySources")).parallelProcessing()
 						.bean(SnmpUtils.class, "pollCounters")
 					.end()
 					// call external camel route 

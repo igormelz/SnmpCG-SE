@@ -72,9 +72,15 @@ public class SnmpUtils {
 
 	@Handler
 	public void pollStatus(@Body SnmpSource source) throws Exception {
+		
+		log.info("start poll status for {}", source.getIpAddress());
+		
 		List<TableEvent> events = getTable(source, STATUS_OIDS);
-		if (events == null)
+		
+		// return if no response
+		if (events == null) {
 			return;
+		}
 
 		// update pollTime
 		source.setPollTime(System.currentTimeMillis());
@@ -125,8 +131,7 @@ public class SnmpUtils {
 							ifEntry.setIfOutOctets(getCounterValue(vb[9], vb[10]));
 						}
 					});
-		log.info("source {} uptime:{} ifNumber:{}", source.getIpAddress(),
-				uptime, events.size() - 1);
+		log.info("source {} uptime:{} ifNumber:{}", source.getIpAddress(),	uptime, events.size() - 1);
 	}
 
 	@Handler
@@ -216,6 +221,13 @@ public class SnmpUtils {
 			source.setStatus(SnmpSourceStatus.TIMEOUT);
 			return null;
 		}
+		
+		// validate NO PDU 
+		if (events == null || events.isEmpty()) {
+			source.setStatus(SnmpSourceStatus.NO_PDU);
+			log.error("source {}: no responsePDU (null)", source.getIpAddress());
+			return null;
+		}
 
 		return events;
 	}
@@ -249,9 +261,7 @@ public class SnmpUtils {
 		}
 
 		if (pollCounter.getValue() == 0 && lastCounter.getValue() > 0) {
-			log.warn(
-					"source {} ifdescr {} fake overflow counter: current poll {}, last value {}",
-					sourceIpAddr, ifDescr, pollCounter, lastCounter);
+			log.warn("source {} ifdescr {} fake overflow counter: current poll {}, last value {}", sourceIpAddr, ifDescr, pollCounter, lastCounter);
 			return 0L;
 		}
 

@@ -29,19 +29,18 @@
         <ul class="nav navbar-nav">
           <li><a href="index.html">Sources</a></li>
         </ul>
+        <button id="removeBtn" type="button" class="btn btn-default navbar-btn navbar-right" onclick="delSource()">Remove from CG</button>
       </div>
     </nav>
     <!-- page content -->
     <div class="container">
     	<div class="row">
-        	<h2><span id="ip_span" class="label label-default"></span></h2>
+        	<h2>Source details</span></h2>
         </div>
         <div class="row">
-        	<div class="col-md-8">
         		<table id="tbl" class="table table-condensed">
         			<tbody>
         		</table>
-        	</div>
         </div>
         <div class="row">
           <h3>ifTable</h3>
@@ -84,7 +83,7 @@
 
     var ip = getUrlParameter("ip");
     
-    $("#ip_span").text(ip);
+    $("#removeBtn").text("Remove source:"+ip);
     
     function delSource() {
     	$.ajax({
@@ -117,18 +116,22 @@
     	url: "/api/v1/sources/"+ip,
     	success: function(source){
             $("#tbl tbody tr").empty();
-            $("#tbl tbody").append("<tr><th>action:</th><td><button type=\"button\" class=\"btn btn-default\" onclick=\"delSource()\"><small>Remove from CG</small></button></td></tr>");
+            //$("#tbl tbody").append("<tr><th>action:</th><td><button type=\"button\" class=\"btn btn-default\" onclick=\"delSource()\"><small>Remove from CG</small></button></td></tr>");
+            $("#tbl tbody").append("<tr><th>ipAddress:</th><td><small>" + source.Ip + "</small></td></tr>");
             $("#tbl tbody").append("<tr><th>sysName:</th><td><small>" + source.sysName + "</small></td></tr>");
             $("#tbl tbody").append("<tr><th>sysDescr:</th><td><small>" + source.sysDescr + "</small></td></tr>");
             if (source.Status == 'SUCCESS') {
-            	$("#tbl tbody").append("<tr><th>pollStatus:</th><td><span class=\"label label-success\">" + source.Status + "</span></td></tr>");
+            	$("#tbl tbody").append("<tr><th>pollStatus:</th><td><span class=\"label label-success\">" + source.Status + "</span><small> (last update:"+(new Date(source.pollTime).toISOString())+")</small></td></tr>");
             } 
             if (source.Status == 'TIMEOUT') {
-            	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-warning\">" + source.Status + "</span></td></tr>");
+            	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-danger\">" + source.Status + "</span><small> (last update:"+(new Date(source.pollTime).toISOString())+")</small></td></tr>");
             }
+            if (source.Status == 'NO_PDU') {
+            	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-warning\">" + source.Status + "</span><small> (last update:"+(new Date(source.pollTime).toISOString())+")</small></td></tr>");
+            }             
             if (source.Status == 'UNKNOWN') {
             	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-default\">" + source.Status + "</span></td></tr>");
-            }  
+            }
             //$("#tbl tbody").append("<tr><th>ifNumber</th><td>" + source.ifNumber + "</td></tr>");
             $("#tbl tbody").append("<tr><th>sysUptime</th><td><small>" + uptime(source.sysUptime) + "</small></td></tr>");
          }

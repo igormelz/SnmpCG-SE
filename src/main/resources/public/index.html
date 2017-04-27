@@ -32,6 +32,15 @@
         <ul class="nav navbar-nav">
           <li class="active"><a href="#">Sources</a></li>
         </ul>
+        <form class="navbar-form navbar-right">
+					<div class="form-group">
+						<input id="new_source" type="text" class="form-control" placeholder="0.0.0.0" aria-describedby="basic-addon1">
+					</div>
+					<div class="form-group">
+						<input id="community" type="text" class="form-control" placeholder="community-string" aria-describedby="basic-addon1">
+					</div>
+					<button class="btn btn-default" type="submit" onclick="addSource()">Add to CG</button>  
+        </form>
       </div>
       <!-- /.container -->
     </nav>
@@ -44,42 +53,30 @@
             Source added.
         	</div>
         </div>
-
 		<div class="row">
-			<div class="col-md-6">
-		    	<div class="btn-group" data-toggle="buttons">
+        		<h2 id="tbl_title">List sources</h2>
+        </div>
+		<div class="row">
+		    	<div class="btn-group-sm" data-toggle="buttons">
           			<button id="filter_all" class="btn btn-primary active">
             			View all
           			</button>
-          			<button id="filter_success" class="btn btn-default" type="button">
+          			<button id="filter_success" class="btn btn-info" type="button">
             			SUCCESS <span id="successVal" class="badge info">0</span>
           			</button>
-          			<button id="filter_timeout" class="btn btn-warning">
+          			<button id="filter_timeout" class="btn btn-danger">
             			TIMEOUT <span id="timeoutVal" class="badge">0</span>
+          			</button>
+          			<button id="filter_nopdu" class="btn btn-warning">
+            			NO PDU <span id="nopduVal" class="badge">0</span>
           			</button>
           			<button id="filter_unknown" class="btn btn-default">
             			UNKNOWN <span id="unknownVal" class="badge">0</span>
           			</button>
 		   		</div>
-		   	</div>
-		    <div class="col-md-6">
-        		<form class="form-inline">
-					<div class="form-group">
-						<!-- span class="input-group-addon" id="basic-addon1">IP:</span -->
-						<input id="new_source" type="text" class="form-control" placeholder="0.0.0.0" aria-describedby="basic-addon1">
-					</div>
-					<div class="form-group">
-						<!-- span class="input-group-addon" id="basic-addon2">Community:</span -->
-						<input id="community" type="text" class="form-control" placeholder="community" aria-describedby="basic-addon1">
-					</div>
-					<button class="btn btn-primary" type="submit" onclick="addSource()">Add</button>  
-        		</form>
-		    </div>
 		</div>
-		<div class="row">
-        	<h1 id="tbl_title">List all sources</h1>
-        </div>
         <div class="row">
+        <p/>
         <table id = "tbl_data" class="table table-condensed">
           <thead>
             <tr>
@@ -153,6 +150,7 @@
           	$('#successVal').text(stats.SUCCESS);
           	$('#timeoutVal').text(stats.TIMEOUT);
           	$('#unknownVal').text(stats.UNKNOWN);
+          	$('#nopduVal').text(stats.NO_PDU);
           }
         });
     }
@@ -191,7 +189,10 @@
       	fillCounter();
         table.ajax.url('/api/v1/sources?status=UNKNOWN').load(); 
       });
-      
+      $('#filter_nopdu').on('click', function () {
+      	fillCounter();
+        table.ajax.url('/api/v1/sources?status=NO_PDU').load(); 
+      });
       // onLoad
       fillCounter();
       

@@ -93,11 +93,10 @@ public class SourceInventoryService {
 
 	@Handler
 	public List<SnmpSource> getDownSources() {
-		List<SnmpSource> answer = sources
-				.values()
-				.stream()
-				.filter(source -> source.getStatus() != SnmpSourceStatus.SUCCESS)
-				.collect(Collectors.toList());
+		List<SnmpSource> answer = sources.values().stream()
+			// filter success and no snmp
+			.filter(source -> source.getStatus() != SnmpSourceStatus.SUCCESS || source.getStatus() != SnmpSourceStatus.NO_PDU)
+			.collect(Collectors.toList());
 		return answer;
 	}
 
@@ -159,12 +158,8 @@ public class SourceInventoryService {
 			}
 
 			if ("stats".equalsIgnoreCase(queryString)) {
-				Map<SnmpSourceStatus, Long> stats = sources
-						.values()
-						.stream()
-						.collect(
-								Collectors.groupingBy(SnmpSource::getStatus,
-										Collectors.counting()));
+				Map<SnmpSourceStatus, Long> stats = sources.values().stream()
+					.collect(Collectors.groupingBy(SnmpSource::getStatus, Collectors.counting()));
 				exchange.getIn().setBody(stats);
 				return;
 			}
@@ -172,7 +167,7 @@ public class SourceInventoryService {
 
 		// return list sources
 		List<Map<String, Object>> answer = sources.values().stream()
-				.map(mapSource).collect(Collectors.toList());
+			.map(mapSource).collect(Collectors.toList());
 		exchange.getIn().setBody(answer);
 	}
 
@@ -185,6 +180,7 @@ public class SourceInventoryService {
 		map.put("sysDescr", source.getSysDescr());
 		map.put("snmpCommunity", source.getTarget().getCommunity().toString());
 		map.put("ifNumber", source.getIftable().size());
+		map.put("pollTime", source.getPollTime());
 		return map;
 	};
 
@@ -202,10 +198,7 @@ public class SourceInventoryService {
 	}
 
 	Function<SnmpSource, String> printCounters = source -> {
-		return source
-				.getIftable()
-				.values()
-				.stream()
+		return source.getIftable().values().stream()
 				.filter(e -> e.isPolling() && e.isTrace())
 				.map(e -> {
 					return String.format("%s,%s,%s,%s,%d,%d,%d,%d,%s", source
@@ -228,10 +221,7 @@ public class SourceInventoryService {
 	}
 
 	Function<SnmpSource, String> printChargingData = source -> {
-		return source
-				.getIftable()
-				.values()
-				.stream()
+		return source.getIftable().values().stream()
 				.filter(e -> e.isPolling())
 				.map(e -> {
 					return String.format("%s,%s,%s,%s,%d,%d,%d,%s,%d",
