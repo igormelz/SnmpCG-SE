@@ -131,10 +131,11 @@ public class SnmpUtils {
 
 	@Handler
 	public void pollCounters(@Body SnmpSource source) throws Exception {
-
+		
 		List<TableEvent> events = getTable(source, COUNTER_OIDS);
 		if (events == null)
 			return;
+		
 		// update pollTime
 		source.setPollTime(System.currentTimeMillis());
 
@@ -142,11 +143,14 @@ public class SnmpUtils {
 		long sysUptime = events.get(0).getColumns()[0].getVariable().toLong();
 		if (source.getSysUptime() > sysUptime) {
 			log.warn("source {}: was rebooted between pool. Reset all counter", source.getIpAddress());
-			source.resetSnmpInterfaceCounters();
+			// source.resetSnmpInterfaceCounters();
+			// set default duration 
+			source.setPollDuration(0L);
+		} else {
+			// calc duration as diff in timeticks 
+			source.setPollDuration(sysUptime - source.getSysUptime());
 		}
-
 		// update sysUptime
-		source.setPollDuration(sysUptime - source.getSysUptime());
 		source.setSysUptime(sysUptime);
 
 		// process ifEntry
@@ -170,13 +174,19 @@ public class SnmpUtils {
 							if (ifEntry.getIfAdminStatus() == 1) {
 								SnmpCounter pollInOctets = getCounterValue(vb[4], vb[5]);
 								SnmpCounter pollOutOctets = getCounterValue(vb[6], vb[7]);
-								// calc delta
-								ifEntry.setPollInOctets(calcDeltaCounter(
+								if (source.getPollDuration() != 0L) {
+									// calc delta
+									ifEntry.setPollInOctets(calcDeltaCounter(
 										source.getIpAddress(), ifdescr,
 										pollInOctets, ifEntry.getIfInOctets()));
-								ifEntry.setPollOutOctets(calcDeltaCounter(
+									ifEntry.setPollOutOctets(calcDeltaCounter(
 										source.getIpAddress(), ifdescr,
 										pollOutOctets, ifEntry.getIfOutOctets()));
+								} else {
+									// no calc delta, set default value 
+									ifEntry.setPollInOctets(0L);
+									ifEntry.setPollOutOctets(0L);
+								}
 								// update
 								ifEntry.setIfInOctets(pollInOctets);
 								ifEntry.setIfOutOctets(pollOutOctets);
