@@ -141,7 +141,7 @@ public class SnmpUtils {
 		// process sysUpTime
 		long sysUptime = events.get(0).getColumns()[0].getVariable().toLong();
 		if (source.getSysUptime() > sysUptime) {
-			log.warn("source {}: was rebooted between pool. Reset all counter");
+			log.warn("source {}: was rebooted between pool. Reset all counter", source.getIpAddress());
 			source.resetSnmpInterfaceCounters();
 		}
 
