@@ -287,6 +287,7 @@ public class SourceInventoryService {
 		Map<String, String> answer = new HashMap<String, String>(1);
 		answer.put("Status", sb.toString());
 		exchange.getIn().setBody(answer);
+		log.info("Admin UI: {}", sb.toString());
 	}
 
 	@Handler
@@ -296,7 +297,7 @@ public class SourceInventoryService {
 		StringBuilder msg = new StringBuilder("source " + sourceIpAddr);
 		if (sources.containsKey(sourceIpAddr)) {
 			sources.remove(sourceIpAddr);
-			msg.append(" deleted");
+			msg.append(" deleted");			
 		} else {
 			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
 			msg.append(" not found");
@@ -304,6 +305,7 @@ public class SourceInventoryService {
 		Map<String, String> answer = new HashMap<String, String>();
 		answer.put("Status", msg.toString());
 		exchange.getIn().setBody(answer);
+		log.info("Admin UI: {}", msg.toString());
 	}
 
 	@PostConstruct
