@@ -77,13 +77,13 @@ public class SnmpUtils {
 		
 		List<TableEvent> events = getTable(source, STATUS_OIDS);
 		
+		// update pollTime
+		source.setPollTime(System.currentTimeMillis());
+
 		// return if no response
 		if (events == null) {
 			return;
 		}
-
-		// update pollTime
-		source.setPollTime(System.currentTimeMillis());
 
 		// get sysInfo
 		VariableBinding vbs[] = events.get(0).getColumns();
