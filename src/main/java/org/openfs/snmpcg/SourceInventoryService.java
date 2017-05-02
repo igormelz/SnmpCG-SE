@@ -6,6 +6,7 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,9 +51,12 @@ public class SourceInventoryService {
 	@Value("${snmpcg.persistFileName:none}")
 	private String persistFileName;
 
-	@Value("${snmpcg.TimeStampFormat:yyyyMMddHHmmss}")
+	@Value("${snmpcg.cdr.TimeStampFormat:yyyy-MM-dd HH:mm:ss}")
 	private SimpleDateFormat timeStampFormat;
-
+	
+	@Value("${snmpcg.cdr.FieldSeparator:;}")
+	private String fieldSeparator;
+	
 	private final Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
 
 	protected SnmpSource addSource(String ipaddr, String community) {
@@ -198,46 +202,46 @@ public class SourceInventoryService {
 		exchange.getIn().setBody(sources.get(source).getInterfaces());
 	}
 
-	Function<SnmpSource, String> printCounters = source -> {
+	Function<SnmpSource, String> formatTraceRecord = source -> {
 		return source.getIftable().values().stream()
-				.filter(e -> e.isPolling() && e.isTrace())
-				.map(e -> {
-					return String.format("%s,%d,%s,%s,%s,%d,%d,%d,%d,%s", 
-							source.getIpAddress(),
-							e.getIfIndex(),
-							e.getIfDescr(),
-							e.getIfName(),
-							e.getIfAlias(),
-							e.getIfAdminStatus(),
-							e.getIfOperStatus(),
-							e.getIfInOctets().getValue(),
-							e.getIfOutOctets().getValue(), 
-							timeStampFormat.format(source.getPollTime()));
-				}).collect(Collectors.joining("\n"));
+			.filter(e -> e.isPolling() && e.isTrace())
+			.map(e -> {
+				StringBuilder sb = new StringBuilder();
+				sb.append(source.getIpAddress()).append(fieldSeparator);
+				sb.append(e.getIfIndex()).append(fieldSeparator);
+				sb.append(e.getIfDescr()).append(fieldSeparator);
+				sb.append(e.getIfName()).append(fieldSeparator);
+				sb.append(e.getIfAlias()).append(fieldSeparator);
+				sb.append(e.getIfAdminStatus()).append(fieldSeparator);
+				sb.append(e.getIfOperStatus()).append(fieldSeparator);
+				sb.append(e.getIfInOctets()).append(fieldSeparator);
+				sb.append(e.getIfOutOctets()).append(fieldSeparator); 
+				sb.append(timeStampFormat.format(source.getPollTime()));
+				return sb.toString();
+			}).collect(Collectors.joining("\n"));
 	};
 
 	@Handler
-	public String exportCounters() {
+	public String exportTraceRecords() {
 		if (getReadySources().isEmpty()) {
 			return null;
 		}
-		String exportData = getReadySources().stream().map(printCounters)
+		String exportData = getReadySources().stream().map(formatTraceRecord)
 				.collect(Collectors.joining());
 		return exportData.isEmpty() ? null : exportData;
 	}
 
-	Function<SnmpSource, String> printChargingData = source -> {
+	Function<SnmpSource, String> formatChargingDataRecord = source  -> {
 		return source.getIftable().values().stream()
 				// print polling and interface is up
 				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1)
 				.map(e -> {
-					return String.format("%s,%d,%s,%s,%s,%d,%d,%d,%s,%d",
+					return String.format("%s;%d;%s;%s;%s;%d;%d;%s;%d",
 							source.getIpAddress(),
 							e.getIfIndex(),
 							e.getIfDescr(),
 							e.getIfName(),
 							e.getIfAlias(),
-							e.getIfAdminStatus(),
 							e.getPollInOctets(),
 							e.getPollOutOctets(),
 							timeStampFormat.format(source.getPollTime()),
@@ -246,14 +250,40 @@ public class SourceInventoryService {
 	};
 
 	@Handler
-	public String exportChargingData() {
+	public String exportChargingDataRecords() {
 		if (getReadySources().isEmpty()) {
 			return null;
 		}
-		return getReadySources().stream().map(printChargingData)
+		return getReadySources().stream().map(formatChargingDataRecord)
 				.collect(Collectors.joining("\n"));
 	}
 
+	Function<SnmpSource, List<Object>> listChargingData = source -> {
+		List<Object> answer = new ArrayList<Object>();
+		answer.add(source.getIpAddress());
+		source.getIftable().values().stream()
+			.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1)
+			.forEach(e -> {
+				answer.add(e.getIfIndex());
+				answer.add(e.getIfDescr());
+				answer.add(e.getIfName());
+				answer.add(e.getIfAlias());
+				answer.add(e.getPollInOctets());
+				answer.add(e.getPollOutOctets());
+				answer.add(timeStampFormat.format(source.getPollTime()));
+				answer.add(source.getPollDuration());
+			});
+		return answer;
+	};
+	
+	@Handler
+	public List<List<Object>> exportListChargingData() {
+		if (getReadySources().isEmpty()) {
+			return null;
+		}
+		return getReadySources().stream().map(listChargingData).collect(Collectors.toList());
+	}
+	
 	/**
 	 * rest handler to get source information
 	 * 

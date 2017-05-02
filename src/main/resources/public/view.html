@@ -48,8 +48,7 @@
           <thead>
             <tr>
               <th>ifIndex</th>
-              <th>ifDescr</th>
-              <th>ifName</th>
+              <th>ifDescr (ifName)</th>
               <th>ifAlias</th>
               <th>ifAdminStatus</th>
               <th>ifOperStatus</th>
@@ -144,12 +143,21 @@
  	$('#ifTable').DataTable({
        ajax: {
         url: "/api/v1/sources/"+ip+"/interfaces",
-        dataSrc: '' 
+        //dataSrc: '' 
+        dataSrc: function(ifTable) {
+          ifTable.forEach(function(ifEntry){
+          	ifEntry.ifDescr = (ifEntry.ifName)?ifEntry.ifDescr+" <small>("+ifEntry.ifName+")</small>":ifEntry.ifDescr;
+            ifEntry.ifAdminStatus = (ifEntry.ifAdminStatus==1)?"<span class=\"text-primary\">up</span>":"<span class=\"text-danger\">down</span>";
+            ifEntry.ifOperStatus = (ifEntry.ifOperStatus==1)?"<span class=\"text-primary\">up</span>":"<span class=\"text-danger\">down</span>";
+            //console.log(ifEntry.ifAdminStatus);
+          });
+          return ifTable;
+        }
        },
        columns: [
         { data: "ifIndex" },
        	{ data: "ifDescr" },
-       	{ data: "ifName" },
+       	//{ data: "ifName" },
        	{ data: "ifAlias" },
        	{ data: "ifAdminStatus" },
        	{ data: "ifOperStatus" },
