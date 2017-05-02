@@ -16,7 +16,7 @@
 		<filter>
 			<simple>${body} != null</simple>
 			<to uri="file:out/cdr?fileName=${date:now:yyyyMMddHHmmss}.snmp.dat" />
-			<log message="flush cdr to file: ${headers.CamelFileNameProduced}" />
+			<log message="wrote cdr to file: ${headers.CamelFileNameProduced}" />
 		</filter>
 	</route>
 
@@ -26,7 +26,7 @@
 		<filter>
 			<simple>${body} != null</simple>
 			<to uri="file:out/trace?fileName=${date:now:yyyyMMddHHmmss}.txt" />
-			<log message="flush trace counters to file: ${headers.CamelFileNameProduced}" />
+			<log message="wrote trace to file: ${headers.CamelFileNameProduced}" />
 		</filter>
 	</route>
 

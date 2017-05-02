@@ -47,11 +47,12 @@
 		  <table id="ifTable" class="table table-condensed">
           <thead>
             <tr>
-              <th>IfDescr</th>
-              <th>IfName</th>
-              <th>IfAlias</th>
-              <th>IfAdminStatus</th>
-              <th>IfOperStatus</th>
+              <th>ifIndex</th>
+              <th>ifDescr</th>
+              <th>ifName</th>
+              <th>ifAlias</th>
+              <th>ifAdminStatus</th>
+              <th>ifOperStatus</th>
               <th>pollInOctets</th>
               <th>pollOutOctets</th>
             </tr>
@@ -143,6 +144,7 @@
         dataSrc: '' 
        },
        columns: [
+        { data: "ifIndex" },
        	{ data: "ifDescr" },
        	{ data: "ifName" },
        	{ data: "ifAlias" },

@@ -93,7 +93,8 @@ public class SnmpCollectorApplication {
 			from("direct:pollStatus")
 				.split(method("sources", "getDownSources")).parallelProcessing()
 					.bean(SnmpUtils.class, "pollStatus")
-				.end();
+				.end()
+				;
 			
 			// scheduled poll counters
 			from("quartz2://snmp/poll?cron=0+0/5+*+*+*+?").routeId("pollCounters")

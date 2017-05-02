@@ -95,7 +95,8 @@ public class SourceInventoryService {
 	public List<SnmpSource> getDownSources() {
 		List<SnmpSource> answer = sources.values().stream()
 			// filter success and no snmp
-			.filter(source -> source.getStatus() != SnmpSourceStatus.SUCCESS || source.getStatus() != SnmpSourceStatus.NO_PDU)
+			.filter(source -> source.getStatus() != SnmpSourceStatus.SUCCESS)
+			.filter(source -> source.getStatus() != SnmpSourceStatus.NO_PDU)
 			.collect(Collectors.toList());
 		return answer;
 	}
@@ -201,12 +202,17 @@ public class SourceInventoryService {
 		return source.getIftable().values().stream()
 				.filter(e -> e.isPolling() && e.isTrace())
 				.map(e -> {
-					return String.format("%s,%s,%s,%s,%d,%d,%d,%d,%s", source
-							.getIpAddress(), e.getIfDescr(), e.getIfName(), e
-							.getIfAlias(), e.getIfAdminStatus(), e
-							.getIfOperStatus(), e.getIfInOctets().getValue(), e
-							.getIfOutOctets().getValue(), timeStampFormat
-							.format(source.getPollTime()));
+					return String.format("%s,%d,%s,%s,%s,%d,%d,%d,%d,%s", 
+							source.getIpAddress(),
+							e.getIfIndex(),
+							e.getIfDescr(),
+							e.getIfName(),
+							e.getIfAlias(),
+							e.getIfAdminStatus(),
+							e.getIfOperStatus(),
+							e.getIfInOctets().getValue(),
+							e.getIfOutOctets().getValue(), 
+							timeStampFormat.format(source.getPollTime()));
 				}).collect(Collectors.joining("\n"));
 	};
 
@@ -222,12 +228,17 @@ public class SourceInventoryService {
 
 	Function<SnmpSource, String> printChargingData = source -> {
 		return source.getIftable().values().stream()
-				.filter(e -> e.isPolling())
+				// print polling and interface is up
+				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1)
 				.map(e -> {
-					return String.format("%s,%s,%s,%s,%d,%d,%d,%s,%d",
-							source.getIpAddress(), e.getIfDescr(),
-							e.getIfName(), e.getIfAlias(),
-							e.getIfAdminStatus(), e.getPollInOctets(),
+					return String.format("%s,%d,%s,%s,%s,%d,%d,%d,%s,%d",
+							source.getIpAddress(),
+							e.getIfIndex(),
+							e.getIfDescr(),
+							e.getIfName(),
+							e.getIfAlias(),
+							e.getIfAdminStatus(),
+							e.getPollInOctets(),
 							e.getPollOutOctets(),
 							timeStampFormat.format(source.getPollTime()),
 							source.getPollDuration());

@@ -2,12 +2,13 @@ package org.openfs.snmpcg.model;
 
 public final class SnmpInterface {
 	private final String ifDescr;
+	private int ifIndex;
 	private String ifName;
 	private String ifAlias;
 	private int ifAdminStatus;
 	private int ifOperStatus;
 	private boolean polling = true;
-	private boolean trace = false;
+	private boolean trace = true;
 	private SnmpCounter ifInOctets = new SnmpCounter();
 	private SnmpCounter ifOutOctets = new SnmpCounter();
 	private long pollInOctets;
@@ -110,6 +111,14 @@ public final class SnmpInterface {
 
 	public void setIfOperStatus(int ifOperStatus) {
 		this.ifOperStatus = ifOperStatus;
+	}
+
+	public int getIfIndex() {
+		return ifIndex;
+	}
+
+	public void setIfIndex(int ifIndex) {
+		this.ifIndex = ifIndex;
 	}
 
 }
