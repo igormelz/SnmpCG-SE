@@ -129,6 +129,9 @@
             }
             if (source.Status == 'NO_PDU') {
             	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-warning\">" + source.Status + "</span><small> (last update:"+(new Date(source.pollTime).toISOString())+")</small></td></tr>");
+            }
+            if (source.Status == 'NO_IFTABLE') {
+            	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-warning\">" + source.Status + "</span><small> (last update:"+(new Date(source.pollTime).toISOString())+")</small></td></tr>");
             }             
             if (source.Status == 'UNKNOWN') {
             	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-default\">" + source.Status + "</span></td></tr>");

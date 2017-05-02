@@ -41,7 +41,8 @@ public class SnmpUtils {
 			// IfOutOctest[6]
 			new OID(".1.3.6.1.2.1.2.2.1.16."),
 			// IfHCOut64[7]
-			new OID(".1.3.6.1.2.1.31.1.1.1.10."), };
+			new OID(".1.3.6.1.2.1.31.1.1.1.10.")
+			};
 
 	private final static OID STATUS_OIDS[] = new OID[] {
 			// sysUpTime[0]
@@ -52,16 +53,18 @@ public class SnmpUtils {
 			new OID(".1.3.6.1.2.1.1.5"),
 			// sysLocation[3]
 			new OID(".1.3.6.1.2.1.1.6"),
-			// ifDescr[4]
+			// ifNumber[4]
+			new OID(".1.3.6.1.2.1.2.1"),
+			// ifDescr[5]
 			new OID(".1.3.6.1.2.1.2.2.1.2"),
-			// ifAdminStatus[5]
+			// ifAdminStatus[6]
 			new OID(".1.3.6.1.2.1.2.2.1.7"),
-			// ifOperStatus[6]
+			// ifOperStatus[7]
 			new OID(".1.3.6.1.2.1.2.2.1.8"),
-			// ifName[7]
+			// ifName[8]
 			new OID("1.3.6.1.2.1.31.1.1.1.1"),
-			// ifAlias[8]
-			new OID("1.3.6.1.2.1.31.1.1.1.18") 
+			// ifAlias[9]
+			new OID("1.3.6.1.2.1.31.1.1.1.18"),
 			};
 
 	@Handler
@@ -81,58 +84,72 @@ public class SnmpUtils {
 
 		// get source info 
 		VariableBinding vbs[] = events.get(0).getColumns();
+		
+		// update sysUptime
 		String uptime = vbs[0].getVariable().toString();
 		source.setSysUptime(vbs[0].getVariable().toLong());
+		
+		// update system info
 		source.setSysDescr(vbs[1].getVariable().toString());
 		source.setSysName(vbs[2].getVariable().toString());
 		source.setSysLocation(vbs[3].getVariable().toString());
+		
+		// validate ifNumber	
+		if(vbs[4] == null || (vbs[4] != null && vbs[4].getVariable().toInt() == 0)) {
+			log.warn("source {}: has no interfaces", source.getIpAddress());
+			source.setStatus(SnmpSourceStatus.NO_IFTABLE);
+			return;
+		}
+		int ifNumber = vbs[4].getVariable().toInt();
+		
+		// set success status
 		source.setStatus(SnmpSourceStatus.SUCCESS);
 
 		// process ifEntry
 		events.subList(1, events.size()).stream()
-				.filter(event -> event != null)
 				.forEach(new Consumer<TableEvent>() {
 					int i = 1;
 					public void accept(TableEvent event) {
 
 						VariableBinding vb[] = event.getColumns();
 
-						if (vb == null || vb.length <5)
+						if (vb == null || vb.length <6) {
+							log.warn("source {}: no ifTable in response", source.getIpAddress());
 							return;
+						}
 
-						if (event.getColumns()[4] == null)
+						if (event.getColumns()[5] == null)
 							return;
 						
-						String ifdescr = vb[4].getVariable().toString();
+						String ifdescr = vb[5].getVariable().toString();
 						SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
 
 						// update ifindex 
 						ifEntry.setIfIndex(i++);
 						
 						// update adminStatus
-						if (vb[5] != null) {
-							ifEntry.setIfAdminStatus(vb[5].getVariable()
-									.toInt());
+						if (vb[6] != null) {
+							ifEntry.setIfAdminStatus(vb[6].getVariable().toInt());
 						}
 
 						// update operStatus
-						if (vb[6] != null) {
-							ifEntry.setIfOperStatus(vb[6].getVariable().toInt());
+						if (vb[7] != null) {
+							ifEntry.setIfOperStatus(vb[7].getVariable().toInt());
 						}
 
 						// update ifName
-						if (vb[7] != null && ifEntry.getIfName() == null) {
-							ifEntry.setIfName(vb[7].getVariable().toString());
+						if (vb[8] != null && ifEntry.getIfName() == null) {
+							ifEntry.setIfName(vb[8].getVariable().toString());
 						}
 
 						// update ifAlias
-						if (vb[8] != null && ifEntry.getIfAlias() == null) {
-							ifEntry.setIfAlias(vb[8].getVariable().toString());
+						if (vb[9] != null && ifEntry.getIfAlias() == null) {
+							ifEntry.setIfAlias(vb[9].getVariable().toString());
 						}
 					}
 				});
-		log.info("source {}: status:SUCCESS, uptime:{}, ifNumber:{}", source.getIpAddress(),
-				uptime, events.size() - 1);
+		log.info("source {}: status:SUCCESS, uptime:{}, ifNumber:{}[{}]", source.getIpAddress(),
+				uptime, events.size() - 1, ifNumber);
 	}
 
 	@Handler

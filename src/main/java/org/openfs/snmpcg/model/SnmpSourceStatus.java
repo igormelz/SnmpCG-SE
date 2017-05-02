@@ -8,7 +8,8 @@ public enum SnmpSourceStatus {
 	TIMEOUT(1, "No snmp response (timeout)"), 
 	NO_PDU(2, "No responsePDU (null)"), 
 	OTHER_ERROR(3, "Response error"), 
-	UNKNOWN(4, "Unknown");
+	UNKNOWN(4, "Unknown"),
+	NO_IFTABLE(5, "has no interfaces");
 
 	private final int code;
 	private final String message;

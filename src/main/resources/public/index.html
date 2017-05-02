@@ -58,19 +58,21 @@
         </div>
 		<div class="row">
 		    	<div class="btn-group-sm" data-toggle="buttons">
-          			<button id="filter_all" class="btn btn-primary active">
-            			View all
-          			</button>
-          			<button id="filter_success" class="btn btn-info" type="button">
+		    		<label>VIEW:</label>
+          			<button type="radio" id="filter_all" class="btn btn-primary active">ALL</button>
+          			<button type="radio" id="filter_success" class="btn btn-info" type="button">
             			SUCCESS <span id="successVal" class="badge info">0</span>
           			</button>
-          			<button id="filter_timeout" class="btn btn-danger">
+          			<button  type="radio" id="filter_timeout" class="btn btn-danger">
             			TIMEOUT <span id="timeoutVal" class="badge">0</span>
           			</button>
-          			<button id="filter_nopdu" class="btn btn-warning">
+          			<button  type="radio" id="filter_nopdu" class="btn btn-warning">
             			NO PDU <span id="nopduVal" class="badge">0</span>
           			</button>
-          			<button id="filter_unknown" class="btn btn-default">
+          			<button  type="radio" id="filter_noif" class="btn btn-warning">
+            			NO IFTABLE <span id="noifVal" class="badge">0</span>
+          			</button>
+          			<button  type="radio" id="filter_unknown" class="btn btn-default">
             			UNKNOWN <span id="unknownVal" class="badge">0</span>
           			</button>
 		   		</div>
@@ -147,10 +149,11 @@
 	$.ajax({
           url: "/api/v1/sources?stats",
           success: function(stats) {
-          	$('#successVal').text(stats.SUCCESS);
-          	$('#timeoutVal').text(stats.TIMEOUT);
-          	$('#unknownVal').text(stats.UNKNOWN);
-          	$('#nopduVal').text(stats.NO_PDU);
+          		$('#successVal').text(stats.SUCCESS);
+          		$('#timeoutVal').text(stats.TIMEOUT);
+          		$('#unknownVal').text(stats.UNKNOWN);
+          		$('#nopduVal').text(stats.NO_PDU);
+          		$('#noifVal').text(stats.NO_IFTABLE);
           }
         });
     }
@@ -192,6 +195,10 @@
       $('#filter_nopdu').on('click', function () {
       	fillCounter();
         table.ajax.url('/api/v1/sources?status=NO_PDU').load(); 
+      });
+      $('#filter_noif').on('click', function () {
+      	fillCounter();
+        table.ajax.url('/api/v1/sources?status=NO_IFTABLE').load(); 
       });
       // onLoad
       fillCounter();
