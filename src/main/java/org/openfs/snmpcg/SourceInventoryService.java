@@ -347,6 +347,9 @@ public class SourceInventoryService {
 		answer.put("Status", msg.toString());
 		exchange.getIn().setBody(answer);
 		log.info("Admin UI: {}", msg.toString());
+		
+		// save changes to recovery 
+		setRecoveryState();
 	}
 
 	@PostConstruct
@@ -380,7 +383,7 @@ public class SourceInventoryService {
 	 * write sources to recovery file
 	 */
 	@Handler
-	public void setRecoveryState() {
+	public synchronized void setRecoveryState() {
 
 		if (persistFileName == null || persistFileName.equalsIgnoreCase("none"))
 			return;
