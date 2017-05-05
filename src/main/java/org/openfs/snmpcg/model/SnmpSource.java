@@ -79,7 +79,7 @@ public final class SnmpSource {
 	}
 
 	public void resetSnmpInterfaceCounters() {
-		iftable.values().forEach(entry -> entry.resetCounters());
+		iftable.values().forEach(SnmpInterface::resetPollCounters);
 	}
 	
 	public SnmpInterface getSnmpInterface(String ifdescr) {

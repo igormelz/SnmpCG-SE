@@ -24,16 +24,21 @@ public final class SnmpInterface {
 
 	public void setIfAdminStatus(int ifAdminStatus) {
 		if (ifAdminStatus != 1) {
-			resetCounters();
+			resetIfCounters();
 		}
 		this.ifAdminStatus = ifAdminStatus;
 	}
 
-	public void resetCounters() {
+	public void resetIfCounters() {
 		ifInOctets.reset();
 		ifOutOctets.reset();
 	}
 
+	public void resetPollCounters() {
+		pollInOctets = 0L;
+		pollOutOctets = 0L;
+	}
+	
 	public boolean isPolling() {
 		return polling;
 	}

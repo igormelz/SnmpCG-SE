@@ -54,7 +54,7 @@ public class SourceInventoryService {
 	@Value("${snmpcg.cdr.TimeStampFormat:yyyy-MM-dd HH:mm:ss}")
 	private SimpleDateFormat timeStampFormat;
 	
-	@Value("${snmpcg.cdr.FieldSeparator:;}")
+	@Value("${snmpcg.cdr.FieldSeparator:|}")
 	private String fieldSeparator;
 	
 	private final Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
@@ -207,6 +207,7 @@ public class SourceInventoryService {
 			.filter(e -> e.isPolling() && e.isTrace())
 			.map(e -> {
 				StringBuilder sb = new StringBuilder();
+				sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
 				sb.append(source.getIpAddress()).append(fieldSeparator);
 				sb.append(e.getIfIndex()).append(fieldSeparator);
 				sb.append(e.getIfDescr()).append(fieldSeparator);
@@ -216,7 +217,7 @@ public class SourceInventoryService {
 				sb.append(e.getIfOperStatus()).append(fieldSeparator);
 				sb.append(e.getIfInOctets()).append(fieldSeparator);
 				sb.append(e.getIfOutOctets()).append(fieldSeparator); 
-				sb.append(timeStampFormat.format(source.getPollTime()));
+				sb.append(source.getSysUptime()).append(fieldSeparator);
 				return sb.toString();
 			}).collect(Collectors.joining("\n"));
 	};
