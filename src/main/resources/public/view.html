@@ -29,31 +29,35 @@
         <ul class="nav navbar-nav">
           <li><a href="index.html">Sources</a></li>
         </ul>
-        <button id="removeBtn" type="button" class="btn btn-default navbar-btn navbar-right" onclick="delSource()">Remove from CG</button>
+        <button id="removeBtn" type="button" class="btn btn-primary navbar-btn navbar-right" onclick="delSource()">Remove</button>
       </div>
     </nav>
     <!-- page content -->
     <div class="container">
-    	<div class="row">
-        	<h2>Source details</span></h2>
-        </div>
-        <div class="row">
-        		<table id="tbl" class="table table-condensed">
-        			<tbody>
-        		</table>
-        </div>
-        <div class="row">
-          <h3>ifTable</h3>
+        	<h2>Source <span id="address"></span></h2>
+			<h5><span id="status" class="label"></span> <small>last updated: <span id="updated">1</span></small></h5>
+		
+		<div class="panel panel-default">
+  			<div class="panel-heading"><span id="sysName"></span></div>
+  			<div class="panel-body">
+    			<span id="sysDescr" class="small"></span>
+  			</div>
+
+			<ul class="list-group">	
+				<li class="list-group-item small"><label>Uptime:</label> <span id="sysUptime"></span>
+        		<li class="list-group-item small"><label>ifNumber:</label> <span id="ifNumber"></span>
+        	</ul>
+		</div>
+		
 		  <table id="ifTable" class="table table-condensed">
           <thead>
             <tr>
               <th>ifIndex</th>
-              <th>ifDescr (ifName)</th>
-              <th>ifAlias</th>
-              <th>ifAdminStatus</th>
-              <th>ifOperStatus</th>
-              <th>pollInOctets</th>
-              <th>pollOutOctets</th>
+              <th>ifDescr</th>
+              <th>ifName:ifAlias</th>
+              <th>pollStatus</th>
+              <th>BYTES_IN</th>
+              <th>BYTES_OUT</th>
             </tr>
           </thead>
           <tbody>
@@ -82,8 +86,8 @@
         }
 
     var ip = getUrlParameter("ip");
-    
-    $("#removeBtn").text("Remove source:"+ip);
+    $("#address").text(ip);
+    $("#removeBtn").text("Remove "+ip);
     
     function delSource() {
     	$.ajax({
@@ -115,57 +119,92 @@
     $.ajax({
     	url: "/api/v1/sources/"+ip,
     	success: function(source){
-            $("#tbl tbody tr").empty();
-            //$("#tbl tbody").append("<tr><th>action:</th><td><button type=\"button\" class=\"btn btn-default\" onclick=\"delSource()\"><small>Remove from CG</small></button></td></tr>");
-            $("#tbl tbody").append("<tr><th>ipAddress:</th><td><small>" + source.Ip + "</small></td></tr>");
-            $("#tbl tbody").append("<tr><th>sysName:</th><td><small>" + source.sysName + "</small></td></tr>");
-            $("#tbl tbody").append("<tr><th>sysDescr:</th><td><small>" + source.sysDescr + "</small></td></tr>");
-            if (source.Status == 'SUCCESS') {
-            	$("#tbl tbody").append("<tr><th>pollStatus:</th><td><span class=\"label label-success\">" + source.Status + "</span><small> (last update:"+(new Date(source.pollTime).toISOString())+")</small></td></tr>");
+    		$("#status").text(source.Status);
+    		if (source.Status == 'UNKNOWN') {
+            	$("#status").addClass("label-default");
             } 
-            if (source.Status == 'TIMEOUT') {
-            	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-danger\">" + source.Status + "</span><small> (last update:"+(new Date(source.pollTime).toISOString())+")</small></td></tr>");
+            else {
+    			$("#updated").text(new Date(source.pollTime));
+ 				if (source.Status == 'SUCCESS') {
+            		$("#status").addClass("label-success");
+            	} 
+            	if (source.Status == 'TIMEOUT') {
+            		$("#status").addClass("label-danger");
+           		}
+            	if (source.Status == 'NO_PDU' || source.Status == 'NO_IFTABLE') {
+            		$("#status").addClass("label-warning");
+            	}            
+            	if (source.sysName) {
+            		$("#sysName").text(source.sysName);
+            		$("#ifNumber").text(source.ifNumber);
+            		$("#sysUptime").text(uptime(source.sysUptime));
+            		$("#sysDescr").text(source.sysDescr);
+            	}
             }
-            if (source.Status == 'NO_PDU') {
-            	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-warning\">" + source.Status + "</span><small> (last update:"+(new Date(source.pollTime).toISOString())+")</small></td></tr>");
-            }
-            if (source.Status == 'NO_IFTABLE') {
-            	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-warning\">" + source.Status + "</span><small> (last update:"+(new Date(source.pollTime).toISOString())+")</small></td></tr>");
-            }             
-            if (source.Status == 'UNKNOWN') {
-            	$("#tbl tbody").append("<tr><th>pollStatus</th><td><span class=\"label label-default\">" + source.Status + "</span></td></tr>");
-            }
-            //$("#tbl tbody").append("<tr><th>ifNumber</th><td>" + source.ifNumber + "</td></tr>");
-            $("#tbl tbody").append("<tr><th>sysUptime</th><td><small>" + uptime(source.sysUptime) + "</small></td></tr>");
          }
     });
        
- 	$('#ifTable').DataTable({
+ 	var dt = $('#ifTable').DataTable({
        ajax: {
         url: "/api/v1/sources/"+ip+"/interfaces",
         //dataSrc: '' 
         dataSrc: function(ifTable) {
           ifTable.forEach(function(ifEntry){
-          	ifEntry.ifDescr = (ifEntry.ifName)?ifEntry.ifDescr+" <small>("+ifEntry.ifName+")</small>":ifEntry.ifDescr;
-            ifEntry.ifAdminStatus = (ifEntry.ifAdminStatus==1)?"<span class=\"text-primary\">up</span>":"<span class=\"text-danger\">down</span>";
-            ifEntry.ifOperStatus = (ifEntry.ifOperStatus==1)?"<span class=\"text-primary\">up</span>":"<span class=\"text-danger\">down</span>";
-            //console.log(ifEntry.ifAdminStatus);
+          	ifEntry.ifDescr = "<a class=\"link\">"+ifEntry.ifDescr+"</a>";
+          	ifEntry.ifName += (ifEntry.ifAlias)?" : "+ifEntry.ifAlias:"";
+            ifEntry.pollStatus = (ifEntry.ifAdminStatus==1 && ifEntry.ifOperStatus==1)?"<span class=\"text-info\">up</span>":"<span class=\"text-danger\">down</span>";
+            ifEntry.bytes_in = Number.parseInt(ifEntry.pollInOctets).toLocaleString('en-EN');
+            ifEntry.bytes_out = Number.parseInt(ifEntry.pollOutOctets).toLocaleString('en-EN');
+            //console.log();
           });
           return ifTable;
         }
        },
+       lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
        columns: [
         { data: "ifIndex" },
-       	{ data: "ifDescr" },
-       	//{ data: "ifName" },
-       	{ data: "ifAlias" },
-       	{ data: "ifAdminStatus" },
-       	{ data: "ifOperStatus" },
-       	{ data: "pollInOctets" },
-       	{ data: "pollOutOctets" }
+       	{ class:"detail", data: "ifDescr" },
+       	{ data: "ifName" },
+       	{ data: "pollStatus" },
+       	{ data: "bytes_in" },
+       	{ data: "bytes_out" }
        ]
     });
 
+	function ifstatus(s) {
+		if (s == 1) return "(<b>up</b>)";
+		return "(<b>down</b>)";
+	}
+	function format(d) {
+		return "<pre>ifAdminStatus="+d.ifAdminStatus+ifstatus(d.ifAdminStatus==1)
+			+" ifOperStatus="+d.ifOperStatus+ifstatus(d.ifOperStatus)
+			+" ifInOctets=<b>"+d.ifInOctets.value+"</b> type="+d.ifInOctets.type
+			+" ifOutOctets=<b>"+d.ifOutOctets.value+"</b> type="+d.ifOutOctets.type
+			+"</pre>";
+	}
+	
+	// Array to track the ids of the details displayed rows
+    var detailRows = [];
+    
+	$('#ifTable tbody').on( 'click', 'tr td.detail' , function () {
+        var tr = $(this).closest('tr');
+        var row = dt.row( tr );
+        var idx = $.inArray( tr.attr('id'), detailRows );
+        if ( row.child.isShown() ) {
+        	//tr.removeClass('info');
+            row.child.hide();
+            // Remove from the 'open' array
+            detailRows.splice( idx, 1 );
+        } else {
+        	//tr.addClass('info');
+        	row.child( format( row.data() ) ).show();
+ 
+            // Add to the 'open' array
+            if ( idx === -1 ) {
+                detailRows.push( tr.attr('id') );
+            }
+        }
+    } );
     </script>
   </body>
 </html>
