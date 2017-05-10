@@ -54,7 +54,7 @@
         	</div>
         </div>
 		<div class="row">
-        		<h2 id="tbl_title">List sources</h2>
+        		<h2>Sources</h2>
         </div>
 		<div class="row">
 		    	<div class="btn-group-sm" data-toggle="buttons">
@@ -82,10 +82,10 @@
         <table id = "tbl_data" class="table table-condensed">
           <thead>
             <tr>
-              <th>Address</th>
-              <th>sysName</th>
               <th>Status</th>
+              <th>Source</th>
               <th>ifNumber</th>
+              <th>last poll @</th>
             </tr>
           </thead>
           <tbody>
@@ -163,17 +163,41 @@
         url: "/api/v1/sources",
         dataSrc: function(sources) {
           sources.forEach(function(source){
-            source.Ip = "<a href=\"view.html?ip=" + source.Ip + "\">"+source.Ip+"</a>";;
+          	if(source.Status == "UNKNOWN") {
+             source.Status = " <span class=\"label label-default small\">"+source.Status+"</span>";
+            } else {
+            	
+            	source.Name = "<a href=\"view.html?ip="+source.Ip+"\">";
+            	if (source.sysName) {
+            		source.Name += source.sysName+" ["+source.Ip+"]</a>";
+            	} else {
+            		source.Name += source.Ip + "</a>";
+            	}
+            	
+            	switch(source.Status) {
+            	case 'SUCCESS':
+             		source.Status = " <span class=\"label label-success small\">"+source.Status+"</span>";
+            		break;
+            	case 'TIMEOUT':
+             		source.Status = " <span class=\"label label-danger small\">"+source.Status+"</span>";
+             		break;
+            	case 'NO_PDU':
+            	case 'NO IFTABLE':
+             		source.Status = " <span class=\"label label-warning small\">"+source.Status+"</span>";
+             		break;             		
+            	}
+            	source.pollTime = new Date(source.pollTime).toLocaleString();
+            }
           });
           return sources;
         }
        },
        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
        columns: [
-        { data: "Ip" },
-        { data: "sysName" },
         { data: "Status" },
-        { data: "ifNumber" }
+        { data: "Name" },
+        { data: "ifNumber" },
+        { data: "pollTime" }
        ]
     });
 

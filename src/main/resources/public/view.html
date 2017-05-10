@@ -35,10 +35,9 @@
     <!-- page content -->
     <div class="container">
         	<h2>Source <span id="address"></span></h2>
-			<h5><span id="status" class="label"></span> <small>last updated: <span id="updated">1</span></small></h5>
-		
+			<h5>last poll @ <span id="updated"></span></h5>
 		<div class="panel panel-default">
-  			<div class="panel-heading"><span id="sysName"></span></div>
+  			<div class="panel-heading"><span id="status" class="label"></span> <span id="sysName"></span></div>
   			<div class="panel-body">
     			<span id="sysDescr" class="small"></span>
   			</div>
@@ -56,8 +55,8 @@
               <th>ifDescr</th>
               <th>ifName:ifAlias</th>
               <th>pollStatus</th>
-              <th>BYTES_IN</th>
-              <th>BYTES_OUT</th>
+              <th>in_bytes</th>
+              <th>out_bytes</th>
             </tr>
           </thead>
           <tbody>
@@ -124,7 +123,7 @@
             	$("#status").addClass("label-default");
             } 
             else {
-    			$("#updated").text(new Date(source.pollTime));
+    			$("#updated").text(new Date(source.pollTime).toLocaleString());
  				if (source.Status == 'SUCCESS') {
             		$("#status").addClass("label-success");
             	} 
