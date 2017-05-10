@@ -1,6 +1,9 @@
 package org.openfs.snmpcg.model;
 
-public final class SnmpInterface {
+import java.io.Serializable;
+
+public final class SnmpInterface implements Serializable {
+	private static final long serialVersionUID = 2654773100327667716L;
 	private final String ifDescr;
 	private int ifIndex;
 	private String ifName;

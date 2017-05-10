@@ -1,5 +1,6 @@
 package org.openfs.snmpcg.model;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +8,8 @@ import java.util.stream.Collectors;
 
 import org.snmp4j.CommunityTarget;
 
-public final class SnmpSource {
+public final class SnmpSource implements Serializable {
+	private static final long serialVersionUID = 5914824756678341630L;
 	private final String ipAddress;
 	private final CommunityTarget target;
 	private SnmpSourceStatus status = SnmpSourceStatus.UNKNOWN;

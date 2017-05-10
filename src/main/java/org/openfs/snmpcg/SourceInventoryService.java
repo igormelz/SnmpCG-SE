@@ -1,7 +1,15 @@
 package org.openfs.snmpcg;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -53,11 +61,11 @@ public class SourceInventoryService {
 
 	@Value("${snmpcg.cdr.TimeStampFormat:yyyy-MM-dd HH:mm:ss}")
 	private SimpleDateFormat timeStampFormat;
-	
+
 	@Value("${snmpcg.cdr.FieldSeparator:|}")
 	private String fieldSeparator;
-	
-	private final Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
+
+	private Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
 
 	protected SnmpSource addSource(String ipaddr, String community) {
 		Address targetAddress = GenericAddress.parse("udp:" + ipaddr + "/161");
@@ -97,11 +105,13 @@ public class SourceInventoryService {
 
 	@Handler
 	public List<SnmpSource> getDownSources() {
-		List<SnmpSource> answer = sources.values().stream()
-			// filter success and no snmp
-			.filter(source -> source.getStatus() != SnmpSourceStatus.SUCCESS)
-			.filter(source -> source.getStatus() != SnmpSourceStatus.NO_PDU)
-			.collect(Collectors.toList());
+		List<SnmpSource> answer = sources
+				.values()
+				.stream()
+				// filter success and no snmp
+				.filter(source -> source.getStatus() != SnmpSourceStatus.SUCCESS)
+				.filter(source -> source.getStatus() != SnmpSourceStatus.NO_PDU)
+				.collect(Collectors.toList());
 		return answer;
 	}
 
@@ -134,14 +144,14 @@ public class SourceInventoryService {
 	}
 
 	/**
-	 * processing REST /api/sources?queryString 
+	 * processing REST /api/sources?queryString
 	 * 
 	 * @param exchange
 	 * @return ?up - list success ?down - list down ?size - up,down
 	 */
 	@Handler
 	public void getSources(Exchange exchange) {
-		
+
 		// process query parameter status
 		String status = exchange.getIn().getHeader("status", String.class);
 		if (status != null && SnmpSourceStatus.isMember(status)) {
@@ -155,7 +165,8 @@ public class SourceInventoryService {
 		}
 
 		// process query string
-		String queryString = exchange.getIn().getHeader("CamelHttpQuery",String.class);
+		String queryString = exchange.getIn().getHeader("CamelHttpQuery",
+				String.class);
 		if (queryString != null && !queryString.isEmpty()) {
 			int i = queryString.indexOf("&");
 			if (i > 0) {
@@ -163,8 +174,12 @@ public class SourceInventoryService {
 			}
 
 			if ("stats".equalsIgnoreCase(queryString)) {
-				Map<SnmpSourceStatus, Long> stats = sources.values().stream()
-					.collect(Collectors.groupingBy(SnmpSource::getStatus, Collectors.counting()));
+				Map<SnmpSourceStatus, Long> stats = sources
+						.values()
+						.stream()
+						.collect(
+								Collectors.groupingBy(SnmpSource::getStatus,
+										Collectors.counting()));
 				exchange.getIn().setBody(stats);
 				return;
 			}
@@ -172,7 +187,7 @@ public class SourceInventoryService {
 
 		// return list sources
 		List<Map<String, Object>> answer = sources.values().stream()
-			.map(mapSource).collect(Collectors.toList());
+				.map(mapSource).collect(Collectors.toList());
 		exchange.getIn().setBody(answer);
 	}
 
@@ -203,23 +218,27 @@ public class SourceInventoryService {
 	}
 
 	Function<SnmpSource, String> formatTraceRecord = source -> {
-		return source.getIftable().values().stream()
-			.filter(e -> e.isPolling() && e.isTrace())
-			.map(e -> {
-				StringBuilder sb = new StringBuilder();
-				sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
-				sb.append(source.getIpAddress()).append(fieldSeparator);
-				sb.append(e.getIfIndex()).append(fieldSeparator);
-				sb.append(e.getIfDescr()).append(fieldSeparator);
-				sb.append(e.getIfName()).append(fieldSeparator);
-				sb.append(e.getIfAlias()).append(fieldSeparator);
-				sb.append(e.getIfAdminStatus()).append(fieldSeparator);
-				sb.append(e.getIfOperStatus()).append(fieldSeparator);
-				sb.append(e.getIfInOctets()).append(fieldSeparator);
-				sb.append(e.getIfOutOctets()).append(fieldSeparator); 
-				sb.append(source.getSysUptime()).append(fieldSeparator);
-				return sb.toString();
-			}).collect(Collectors.joining("\n"));
+		return source
+				.getIftable()
+				.values()
+				.stream()
+				.filter(e -> e.isPolling() && e.isTrace())
+				.map(e -> {
+					StringBuilder sb = new StringBuilder();
+					sb.append(timeStampFormat.format(source.getPollTime()))
+							.append(fieldSeparator);
+					sb.append(source.getIpAddress()).append(fieldSeparator);
+					sb.append(e.getIfIndex()).append(fieldSeparator);
+					sb.append(e.getIfDescr()).append(fieldSeparator);
+					sb.append(e.getIfName()).append(fieldSeparator);
+					sb.append(e.getIfAlias()).append(fieldSeparator);
+					sb.append(e.getIfAdminStatus()).append(fieldSeparator);
+					sb.append(e.getIfOperStatus()).append(fieldSeparator);
+					sb.append(e.getIfInOctets()).append(fieldSeparator);
+					sb.append(e.getIfOutOctets()).append(fieldSeparator);
+					sb.append(source.getSysUptime()).append(fieldSeparator);
+					return sb.toString();
+				}).collect(Collectors.joining("\n"));
 	};
 
 	@Handler
@@ -232,19 +251,19 @@ public class SourceInventoryService {
 		return exportData.isEmpty() ? null : exportData;
 	}
 
-	Function<SnmpSource, String> formatChargingDataRecord = source  -> {
-		return source.getIftable().values().stream()
+	Function<SnmpSource, String> formatChargingDataRecord = source -> {
+		return source
+				.getIftable()
+				.values()
+				.stream()
 				// print polling and interface is up
-				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1)
+				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1
+						&& e.getIfOperStatus() == 1)
 				.map(e -> {
 					return String.format("%s;%d;%s;%s;%s;%d;%d;%s;%d",
-							source.getIpAddress(),
-							e.getIfIndex(),
-							e.getIfDescr(),
-							e.getIfName(),
-							e.getIfAlias(),
-							e.getPollInOctets(),
-							e.getPollOutOctets(),
+							source.getIpAddress(), e.getIfIndex(),
+							e.getIfDescr(), e.getIfName(), e.getIfAlias(),
+							e.getPollInOctets(), e.getPollOutOctets(),
 							timeStampFormat.format(source.getPollTime()),
 							source.getPollDuration());
 				}).collect(Collectors.joining("\n"));
@@ -262,29 +281,32 @@ public class SourceInventoryService {
 	Function<SnmpSource, List<Object>> listChargingData = source -> {
 		List<Object> answer = new ArrayList<Object>();
 		answer.add(source.getIpAddress());
-		source.getIftable().values().stream()
-			.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1)
-			.forEach(e -> {
-				answer.add(e.getIfIndex());
-				answer.add(e.getIfDescr());
-				answer.add(e.getIfName());
-				answer.add(e.getIfAlias());
-				answer.add(e.getPollInOctets());
-				answer.add(e.getPollOutOctets());
-				answer.add(timeStampFormat.format(source.getPollTime()));
-				answer.add(source.getPollDuration());
-			});
+		source.getIftable()
+				.values()
+				.stream()
+				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1
+						&& e.getIfOperStatus() == 1).forEach(e -> {
+					answer.add(e.getIfIndex());
+					answer.add(e.getIfDescr());
+					answer.add(e.getIfName());
+					answer.add(e.getIfAlias());
+					answer.add(e.getPollInOctets());
+					answer.add(e.getPollOutOctets());
+					answer.add(timeStampFormat.format(source.getPollTime()));
+					answer.add(source.getPollDuration());
+				});
 		return answer;
 	};
-	
+
 	@Handler
 	public List<List<Object>> exportListChargingData() {
 		if (getReadySources().isEmpty()) {
 			return null;
 		}
-		return getReadySources().stream().map(listChargingData).collect(Collectors.toList());
+		return getReadySources().stream().map(listChargingData)
+				.collect(Collectors.toList());
 	}
-	
+
 	/**
 	 * rest handler to get source information
 	 * 
@@ -339,7 +361,7 @@ public class SourceInventoryService {
 		StringBuilder msg = new StringBuilder("source " + sourceIpAddr);
 		if (sources.containsKey(sourceIpAddr)) {
 			sources.remove(sourceIpAddr);
-			msg.append(" deleted");			
+			msg.append(" deleted");
 		} else {
 			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
 			msg.append(" not found");
@@ -348,11 +370,12 @@ public class SourceInventoryService {
 		answer.put("Status", msg.toString());
 		exchange.getIn().setBody(answer);
 		log.info("Admin UI: {}", msg.toString());
-		
-		// save changes to recovery 
+
+		// save changes to recovery
 		setRecoveryState();
 	}
 
+	@SuppressWarnings("unchecked")
 	@PostConstruct
 	protected void getRecoveryState() {
 
@@ -362,16 +385,13 @@ public class SourceInventoryService {
 		File recoveryFile = new File(persistFileName);
 		if (recoveryFile.exists() && recoveryFile.canRead()
 				&& sources.isEmpty()) {
-			try (Stream<String> stream = Files
-					.lines(Paths.get(persistFileName))) {
-				stream.forEach(line -> {
-					// split record ip|community|status|sysName
-					String elements[] = line.split("\\|");
-					if (elements.length > 1 && !elements[0].isEmpty()
-							&& !elements[1].isEmpty()) {
-						addSource(elements[0], elements[1]);
-					}
-				});
+			try (FileInputStream fis = new FileInputStream(recoveryFile);
+					ObjectInput input = new ObjectInputStream(
+							new BufferedInputStream(fis));) {
+				sources = (Map<String, SnmpSource>) input.readObject();
+			} catch (ClassNotFoundException ex) {
+				log.error("get recovery", ex);
+				return;
 			} catch (IOException e) {
 				log.error("error read recoveryFile " + persistFileName, e);
 				return;
@@ -399,17 +419,18 @@ public class SourceInventoryService {
 			tmpFile.delete();
 		}
 
-		try {
-			PrintStream os = new PrintStream(tmpFile);
-			sources.values().stream().forEach(s -> os.println(s));
-			os.flush();
-			os.close();
-
+		try (FileOutputStream fos = new FileOutputStream(tmpFile);
+				ObjectOutput output = new ObjectOutputStream(
+						new BufferedOutputStream(fos));) {
+			output.writeObject(sources);
+			output.flush();
+			fos.getFD().sync();
+			output.close();
 			if (!FileUtil.renameFile(tmpFile, recoveryFile, true)) {
-				log.warn("can not rename temp file");
+				log.error("can not rename temp file");
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			log.error("set recovery exception:", e);
 			return;
 		}
 		log.info("store recoveryState to " + persistFileName);

@@ -1,6 +1,9 @@
 package org.openfs.snmpcg.model;
 
-public final class SnmpCounter {
+import java.io.Serializable;
+
+public final class SnmpCounter implements Serializable {
+	private static final long serialVersionUID = -1819280436973035590L;
 	private long value;
 	private int type; // -1, 32,64
 
