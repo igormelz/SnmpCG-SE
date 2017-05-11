@@ -79,10 +79,9 @@
 		</div>
         <div class="row">
         <p/>
-        <table id = "tbl_data" class="table table-condensed">
+        <table id="tbl_data" class="table table-condensed">
           <thead>
             <tr>
-              <th>Status</th>
               <th>Source</th>
               <th>ifNumber</th>
               <th>last poll @</th>
@@ -164,16 +163,8 @@
         dataSrc: function(sources) {
           sources.forEach(function(source){
           	if(source.Status == "UNKNOWN") {
-             source.Status = " <span class=\"label label-default small\">"+source.Status+"</span>";
+             source.Ip = " <span class=\"label label-default small\">"+source.Status+"</span> "+source.Ip;
             } else {
-            	
-            	source.Name = "<a href=\"view.html?ip="+source.Ip+"\">";
-            	if (source.sysName) {
-            		source.Name += source.sysName+" ["+source.Ip+"]</a>";
-            	} else {
-            		source.Name += source.Ip + "</a>";
-            	}
-            	
             	switch(source.Status) {
             	case 'SUCCESS':
              		source.Status = " <span class=\"label label-success small\">"+source.Status+"</span>";
@@ -186,6 +177,13 @@
              		source.Status = " <span class=\"label label-warning small\">"+source.Status+"</span>";
              		break;             		
             	}
+            	var name = source.Status + " <a href=\"view.html?ip="+source.Ip+"\">";
+            	if (source.sysName) {
+            		name += source.sysName+" ["+source.Ip+"]</a>";
+            	} else {
+            		name += source.Ip + "</a>";
+            	}
+            	source.Ip = name;
             	source.pollTime = new Date(source.pollTime).toLocaleString();
             }
           });
@@ -194,8 +192,7 @@
        },
        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
        columns: [
-        { data: "Status" },
-        { data: "Name" },
+        { data: "Ip" },
         { data: "ifNumber" },
         { data: "pollTime" }
        ]

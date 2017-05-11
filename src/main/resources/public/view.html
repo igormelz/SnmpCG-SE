@@ -41,7 +41,6 @@
   			<div class="panel-body">
     			<span id="sysDescr" class="small"></span>
   			</div>
-
 			<ul class="list-group">	
 				<li class="list-group-item small"><label>Uptime:</label> <span id="sysUptime"></span>
         		<li class="list-group-item small"><label>ifNumber:</label> <span id="ifNumber"></span>
@@ -51,9 +50,9 @@
 		  <table id="ifTable" class="table table-condensed">
           <thead>
             <tr>
+              <th></th>
               <th>ifIndex</th>
               <th>ifDescr</th>
-              <th>ifName:ifAlias</th>
               <th>pollStatus</th>
               <th>in_bytes</th>
               <th>out_bytes</th>
@@ -149,8 +148,8 @@
         //dataSrc: '' 
         dataSrc: function(ifTable) {
           ifTable.forEach(function(ifEntry){
-          	ifEntry.ifDescr = "<a class=\"link\">"+ifEntry.ifDescr+"</a>";
-          	ifEntry.ifName += (ifEntry.ifAlias)?" : "+ifEntry.ifAlias:"";
+          	//ifEntry.ifDescr = "<span class=\"glyphicon glyphicon-collapse-down\" aria-hidden=\"true\"></span> "+ifEntry.ifDescr;
+          	ifEntry.ifDescr += (ifEntry.ifAlias)?" ("+ifEntry.ifAlias+")":"";
             ifEntry.pollStatus = (ifEntry.ifAdminStatus==1 && ifEntry.ifOperStatus==1)?"<span class=\"text-info\">up</span>":"<span class=\"text-danger\">down</span>";
             ifEntry.bytes_in = Number.parseInt(ifEntry.pollInOctets).toLocaleString('en-EN');
             ifEntry.bytes_out = Number.parseInt(ifEntry.pollOutOctets).toLocaleString('en-EN');
@@ -161,13 +160,16 @@
        },
        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
        columns: [
-        { data: "ifIndex" },
-       	{ class:"detail", data: "ifDescr" },
-       	{ data: "ifName" },
+       	{ "class":"detail","orderable":false,"data":null,
+          "defaultContent": "<span class=\"glyphicon glyphicon-collapse-down\" aria-hidden=\"true\"></span>"},
+        { data:"ifIndex" },
+       	{ data:"ifDescr" },
+       	//{ data: "ifName" },
        	{ data: "pollStatus" },
        	{ data: "bytes_in" },
        	{ data: "bytes_out" }
-       ]
+       ],
+       "order": [[1, 'asc']]
     });
 
 	function ifstatus(s) {
@@ -187,15 +189,18 @@
     
 	$('#ifTable tbody').on( 'click', 'tr td.detail' , function () {
         var tr = $(this).closest('tr');
+        var btn = $(this).children();
         var row = dt.row( tr );
         var idx = $.inArray( tr.attr('id'), detailRows );
         if ( row.child.isShown() ) {
-        	//tr.removeClass('info');
+        	btn.removeClass('glyphicon-collapse-up');
+        	btn.addClass('glyphicon-collapse-down');
             row.child.hide();
             // Remove from the 'open' array
             detailRows.splice( idx, 1 );
         } else {
-        	//tr.addClass('info');
+       		btn.removeClass('glyphicon-collapse-down');
+        	btn.addClass('glyphicon-collapse-up');
         	row.child( format( row.data() ) ).show();
  
             // Add to the 'open' array
