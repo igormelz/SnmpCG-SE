@@ -71,7 +71,8 @@ public class SnmpCollectorApplication {
 					.to("bean:sources?method=getSource(${header.source})")
 					
 					.post("/sources/{source}")
-					.to("bean:sources?method=addSource")
+					.to("direct:addSource")
+					//.to("bean:sources?method=addSource")
 					
 					.get("/sources/del/{source}")
 					.to("bean:sources?method=removeSource")
@@ -85,6 +86,11 @@ public class SnmpCollectorApplication {
 					//.put("/sources/{source}/interfaces/{ifDescr}")
 					//.to("bean:sources?method=updateInterface(${header.source},${header.ifDescr})")
 					;
+
+			// add new source 
+			from("direct:addSource")
+			.to("bean:sources?method=addSource")
+			.to("direct:pollStatus");
 
 			// scheduled poll source status
 			from("timer://validate?period={{snmpcg.validate.period:3m}}").routeId("pollStatus")

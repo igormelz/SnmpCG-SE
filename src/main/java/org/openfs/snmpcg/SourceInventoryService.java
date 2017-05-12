@@ -10,9 +10,6 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
-import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,8 +19,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import javax.annotation.PostConstruct;
 
 import org.apache.camel.Exchange;
@@ -315,6 +310,12 @@ public class SourceInventoryService {
 	 */
 	@Handler
 	public Map<String, Object> getSource(String sourceIpAddr) {
+		SnmpSource source = sources.get(sourceIpAddr);
+		if (source == null) {
+			Map<String, Object> answer = new HashMap<String, Object>(1);
+			answer.put("Status", "source "+sourceIpAddr+" not found");
+			return answer;
+		}
 		return mapSource.apply(sources.get(sourceIpAddr));
 	}
 
