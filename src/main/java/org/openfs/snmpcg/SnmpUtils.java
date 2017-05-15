@@ -187,11 +187,16 @@ public class SnmpUtils {
 		if (source.getSysUptime() > sysUptime) {
 			log.warn("source {}: was rebooted between pool. Reset all counter",
 					source.getIpAddress());
-			// reset pollCounters
+			// reset pollCounters and duration 
 			source.resetSnmpInterfaceCounters();
-			// set default duration
 			source.setPollDuration(0L);
+		} else {
+			// calc duration in timeticks
+			source.setPollDuration(sysUptime - source.getSysUptime());
 		}
+		
+		// update sysUptime
+		source.setSysUptime(sysUptime);
 
 		// process ifEntry
 		events.subList(1, events.size())
@@ -259,14 +264,6 @@ public class SnmpUtils {
 								ifEntry.setIfOutOctets(bytes_out);
 							}
 						});
-
-		// calc duration in timeticks
-		if (source.getSysUptime() < sysUptime) {
-			source.setPollDuration(sysUptime - source.getSysUptime());
-		}
-
-		// update sysUptime
-		source.setSysUptime(sysUptime);
 
 		log.info("source {}: poll processed: uptime:{}, ifNumber:{}", source
 				.getIpAddress(), events.get(0).getColumns()[0].getVariable()
