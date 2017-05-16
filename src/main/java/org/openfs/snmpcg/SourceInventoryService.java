@@ -196,6 +196,10 @@ public class SourceInventoryService {
 		map.put("snmpCommunity", source.getTarget().getCommunity().toString());
 		map.put("ifNumber", source.getIftable().size());
 		map.put("pollTime", source.getPollTime());
+		long counter_up = source.getInterfaces().stream().filter(e -> e.getIfAdminStatus() == 1
+				&& e.getIfOperStatus() == 1).count();
+		map.put("pollStatusUp", counter_up );
+		map.put("pollStatusDown", source.getIftable().size() - counter_up);
 		return map;
 	};
 
@@ -207,6 +211,19 @@ public class SourceInventoryService {
 			Map<String, String> answer = new HashMap<String, String>(1);
 			answer.put("Status", "source " + source + " not found");
 			exchange.getIn().setBody(answer);
+			return;
+		}
+		
+		// process query parameter status
+		String status = exchange.getIn().getHeader("pollStatus", String.class);
+		if (status != null) {
+			if ("up".equalsIgnoreCase(status)) {
+				exchange.getIn().setBody(sources.get(source).getInterfaces().stream().filter(e -> e.getIfAdminStatus() == 1
+					&& e.getIfOperStatus() == 1).collect(Collectors.toList()));
+			} else {
+				exchange.getIn().setBody(sources.get(source).getInterfaces().stream().filter(e -> (e.getIfAdminStatus() != 1
+						|| e.getIfOperStatus() != 1)).collect(Collectors.toList()));
+			}
 			return;
 		}
 		exchange.getIn().setBody(sources.get(source).getInterfaces());
@@ -347,7 +364,7 @@ public class SourceInventoryService {
 			}
 
 			addSource(host, sourceCommunity);
-			sb.append(" add to poll with community:").append(community);
+			sb.append(" add to poll with community:").append(sourceCommunity);
 		}
 		Map<String, String> answer = new HashMap<String, String>(1);
 		answer.put("Status", sb.toString());

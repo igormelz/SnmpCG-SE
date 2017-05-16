@@ -81,6 +81,7 @@ public class SnmpCollectorApplication {
 					.to("bean:sources?method=removeSource")
 					
 					.get("/sources/{source}/interfaces")
+					.param().name("polling").description("filter by polling status").type(RestParamType.query).endParam()
 					.to("bean:sources?method=getSourceInterfaces")
 					
 					//.put("/sources/{source}/interfaces/{ifDescr}")

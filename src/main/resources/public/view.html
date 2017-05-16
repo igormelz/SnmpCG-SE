@@ -41,13 +41,17 @@
   			<div class="panel-body">
     			<span id="sysDescr" class="small"></span>
   			</div>
-			<ul class="list-group">	
-				<li class="list-group-item small"><label>Uptime:</label> <span id="sysUptime"></span>
-        		<li class="list-group-item small"><label>ifNumber:</label> <span id="ifNumber"></span>
+			<ul class="list-group">
+				<li class="list-group-item small"><label>Uptime:</label><span id="sysUptime"></span></li>
+				<li class="list-group-item">
+				<div class="btn-group-sm" data-toggle="buttons">
+        		<btn type="radio" class="btn btn-default" id="ifAll">ifNumber: <span id="ifNumber" class="badge info"></span></btn>
+        		<btn type="radio" class="btn btn-success" id="ifUp">ifNumberUp <span id="pollUp" class="badge info">0</span></btn>
+        		<btn type="radio" class="btn btn-warning" id="ifDown">ifNumberDown <span id="pollDown" class="badge info">0</span></btn>
+        		</div>
         	</ul>
 		</div>
-		
-		  <table id="ifTable" class="table table-condensed">
+		<table id="ifTable" class="table table-condensed">
           <thead>
             <tr>
               <th></th>
@@ -137,6 +141,8 @@
             		$("#ifNumber").text(source.ifNumber);
             		$("#sysUptime").text(uptime(source.sysUptime));
             		$("#sysDescr").text(source.sysDescr);
+            		$("#pollUp").text(source.pollStatusUp);
+            		$("#pollDown").text(source.pollStatusDown);
             	}
             }
          }
@@ -209,6 +215,17 @@
             }
         }
     } );
+    
+    $('#ifUp').on('click', function () {
+        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?pollStatus=up" ).load();  
+    });
+    $('#ifDown').on('click', function () {
+        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?pollStatus=down" ).load();  
+    });
+    $('#ifAll').on('click', function () {
+        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces" ).load();  
+    });
+    
     </script>
   </body>
 </html>
