@@ -19,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import javax.annotation.PostConstruct;
 
 import org.apache.camel.Exchange;
@@ -57,8 +58,8 @@ public class SourceInventoryService {
 	@Value("${snmpcg.cdr.TimeStampFormat:yyyy-MM-dd HH:mm:ss}")
 	private SimpleDateFormat timeStampFormat;
 
-	@Value("${snmpcg.cdr.FieldSeparator:|}")
-	private String fieldSeparator;
+	@Value("${snmpcg.cdr.FieldSeparator:;}")
+	private char fieldSeparator;
 
 	private Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
 
@@ -243,7 +244,7 @@ public class SourceInventoryService {
 					sb.append(e.getIfIndex()).append(fieldSeparator);
 					sb.append(e.getIfDescr()).append(fieldSeparator);
 					sb.append(e.getIfName()).append(fieldSeparator);
-					sb.append(e.getIfAlias()).append(fieldSeparator);
+					sb.append(e.getIfAlias().replace(fieldSeparator, '.')).append(fieldSeparator);
 					sb.append(e.getIfAdminStatus()).append(fieldSeparator);
 					sb.append(e.getIfOperStatus()).append(fieldSeparator);
 					sb.append(e.getIfInOctets()).append(fieldSeparator);
@@ -252,16 +253,6 @@ public class SourceInventoryService {
 					return sb.toString();
 				}).collect(Collectors.joining("\n"));
 	};
-
-	@Handler
-	public String exportTraceRecords() {
-		if (getReadySources().isEmpty()) {
-			return null;
-		}
-		String exportData = getReadySources().stream().map(formatTraceRecord)
-				.collect(Collectors.joining());
-		return exportData.isEmpty() ? null : exportData;
-	}
 
 	Function<SnmpSource, String> formatChargingDataRecord = source -> {
 		return source
@@ -272,14 +263,29 @@ public class SourceInventoryService {
 				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1
 						&& e.getIfOperStatus() == 1)
 				.map(e -> {
-					return String.format("%s;%d;%s;%s;%s;%d;%d;%s;%d",
-							source.getIpAddress(), e.getIfIndex(),
-							e.getIfDescr(), e.getIfName(), e.getIfAlias(),
-							e.getPollInOctets(), e.getPollOutOctets(),
-							timeStampFormat.format(source.getPollTime()),
-							source.getPollDuration());
+					StringBuilder sb = new StringBuilder();
+					sb.append(source.getIpAddress()).append(fieldSeparator);
+					sb.append(e.getIfIndex()).append(fieldSeparator);
+					sb.append(e.getIfDescr()).append(fieldSeparator);
+					sb.append(e.getIfName()).append(fieldSeparator);
+					sb.append(e.getIfAlias().replace(fieldSeparator, '.')).append(fieldSeparator);
+					sb.append(e.getPollInOctets()).append(fieldSeparator);
+					sb.append(e.getPollOutOctets()).append(fieldSeparator);
+					sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
+					sb.append(source.getPollDuration());
+					return sb.toString();
 				}).collect(Collectors.joining("\n"));
 	};
+
+	@Handler
+	public String exportTraceRecords() {
+		if (getReadySources().isEmpty()) {
+			return null;
+		}
+		String exportData = getReadySources().stream().map(formatTraceRecord)
+				.collect(Collectors.joining("\n"));
+		return exportData.isEmpty() ? null : exportData;
+	}
 
 	@Handler
 	public String exportChargingDataRecords() {

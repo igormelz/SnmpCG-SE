@@ -58,8 +58,9 @@
         </div>
 		<div class="row">
 		    	<div class="btn-group-sm" data-toggle="buttons">
-		    		<label>VIEW:</label>
-          			<button type="radio" id="filter_all" class="btn btn-info active">ALL</button>
+          			<button type="radio" id="filter_all" class="btn btn-info active">
+          				ALL <span id="allVal" class="badge info">0</span>
+          			</button>
           			<button type="radio" id="filter_success" class="btn btn-success" type="button">
             			SUCCESS <span id="successVal" class="badge info">0</span>
           			</button>
@@ -148,11 +149,18 @@
 	$.ajax({
           url: "/api/v1/sources?stats",
           success: function(stats) {
-          		$('#successVal').text(stats.SUCCESS);
-          		$('#timeoutVal').text(stats.TIMEOUT);
-          		$('#unknownVal').text(stats.UNKNOWN);
-          		$('#nopduVal').text(stats.NO_PDU);
-          		$('#noifVal').text(stats.NO_IFTABLE);
+      			var all = 0;
+      			var suc = (stats.SUCCESS)?parseInt(stats.SUCCESS):0;
+          		$('#successVal').text(suc);
+          		var tim = (stats.TIMEOUT)?parseInt(stats.TIMEOUT):0;
+          		$('#timeoutVal').text(tim);
+          		var unk = (stats.UNKNOWN)?parseInt(stats.UNKNOWN):0;
+          		$('#unknownVal').text(unk);
+          		var np = (stats.NO_PDU)?parseInt(stats.NO_PDU):0;
+          		$('#nopduVal').text(np);
+          		nif = (stats.NO_IFTABLE)?parseInt(stats.NO_IFTABLE):0;
+          		$('#noifVal').text(nif);
+          		$('#allVal').text(suc+tim+unk+np+nif);
           }
         });
     }
