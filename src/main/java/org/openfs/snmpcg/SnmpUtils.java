@@ -83,8 +83,16 @@ public class SnmpUtils {
 		// get source info
 		VariableBinding vbs[] = events.get(0).getColumns();
 
-		// update sysUptime
+		// process sysUpTime
 		String uptime = vbs[0].getVariable().toString();
+		long sysUptime = events.get(0).getColumns()[0].getVariable().toLong();
+		
+		if (source.getSysUptime() != 0 && source.getSysUptime() > sysUptime) {
+			log.warn("source {}: was rebooted between pool. Reset all counter",	source.getIpAddress());
+			// reset pollCounters and duration
+			source.resetSnmpInterfaceCounters();
+			source.setPollDuration(0L);
+		} 
 		source.setSysUptime(vbs[0].getVariable().toLong());
 
 		// update system info
@@ -185,8 +193,7 @@ public class SnmpUtils {
 		// process sysUpTime
 		long sysUptime = events.get(0).getColumns()[0].getVariable().toLong();
 		if (source.getSysUptime() > sysUptime) {
-			log.warn("source {}: was rebooted between pool. Reset all counter",
-					source.getIpAddress());
+			log.warn("source {}: was rebooted between pool. Reset all counter",	source.getIpAddress());
 			// reset pollCounters and duration 
 			source.resetSnmpInterfaceCounters();
 			source.setPollDuration(0L);
