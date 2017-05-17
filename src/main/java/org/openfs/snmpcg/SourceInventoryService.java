@@ -40,8 +40,7 @@ import org.openfs.snmpcg.model.SnmpSourceStatus;
 @Service("sources")
 public class SourceInventoryService {
 
-	private static final Logger log = LoggerFactory
-			.getLogger(SourceInventoryService.class);
+	private static final Logger log = LoggerFactory.getLogger(SourceInventoryService.class);
 
 	@Value("${snmpcg.snmp.community:public}")
 	private String community;
@@ -76,13 +75,6 @@ public class SourceInventoryService {
 		return sources.put(ipaddr, source);
 	}
 
-	public List<SnmpSource> getSourcesByStatus(SnmpSourceStatus status) {
-		List<SnmpSource> answer = sources.values().stream()
-				.filter(info -> info.getStatus() == status)
-				.collect(Collectors.toList());
-		return answer;
-	}
-
 	protected CommunityTarget createTarget(Address targetAddress,
 			String community, int retries, int timeout) {
 		CommunityTarget target = new CommunityTarget();
@@ -96,19 +88,16 @@ public class SourceInventoryService {
 
 	@Handler
 	public List<SnmpSource> getReadySources() {
-		return getSourcesByStatus(SnmpSourceStatus.SUCCESS);
+		return sources.values().stream()
+				.filter(info -> info.getStatus().isUp())
+				.collect(Collectors.toList());
 	}
 
 	@Handler
 	public List<SnmpSource> getDownSources() {
-		List<SnmpSource> answer = sources
-				.values()
-				.stream()
-				// filter success and no snmp
-				.filter(source -> source.getStatus() != SnmpSourceStatus.SUCCESS)
-				.filter(source -> source.getStatus() != SnmpSourceStatus.NO_PDU)
+		return sources.values().stream()
+				.filter(source -> source.getStatus().isDown())
 				.collect(Collectors.toList());
-		return answer;
 	}
 
 	public void parse(String source, String delimiter) {
@@ -120,8 +109,7 @@ public class SourceInventoryService {
 		// parse ip<delimiter>community
 		String[] values = source.trim().split(delimiter, 2);
 		String parsedIpAddr = values[0];
-		String parsedCommunity = (values.length > 1 && !values[1].isEmpty()) ? values[1]
-				: community;
+		String parsedCommunity = (values.length > 1 && !values[1].isEmpty()) ? values[1] : community;
 
 		if (!Pattern.matches("\\d+.\\d+.\\d+.\\d+", parsedIpAddr)) {
 			log.error("wrong IPADDR for source:" + parsedIpAddr);
@@ -135,8 +123,7 @@ public class SourceInventoryService {
 		}
 
 		addSource(parsedIpAddr, parsedCommunity);
-		log.info("parsed source {}, community [{}]", parsedIpAddr,
-				parsedCommunity);
+		log.info("parsed source {}, community [{}]", parsedIpAddr, parsedCommunity);
 	}
 
 	/**
@@ -151,10 +138,10 @@ public class SourceInventoryService {
 		// process query parameter status
 		String status = exchange.getIn().getHeader("status", String.class);
 		if (status != null && SnmpSourceStatus.isMember(status)) {
-			SnmpSourceStatus qStatus = SnmpSourceStatus.valueOf(status
-					.toUpperCase());
+			SnmpSourceStatus qStatus = SnmpSourceStatus.valueOf(status.toUpperCase());
 			List<Map<String, Object>> answer = sources.values().stream()
-					.filter(e -> e.getStatus() == qStatus).map(mapSource)
+					.filter(e -> e.getStatus() == qStatus)
+					.map(mapSource)
 					.collect(Collectors.toList());
 			exchange.getIn().setBody(answer);
 			return;
@@ -170,12 +157,8 @@ public class SourceInventoryService {
 			}
 
 			if ("stats".equalsIgnoreCase(queryString)) {
-				Map<SnmpSourceStatus, Long> stats = sources
-						.values()
-						.stream()
-						.collect(
-								Collectors.groupingBy(SnmpSource::getStatus,
-										Collectors.counting()));
+				Map<SnmpSourceStatus, Long> stats = sources.values().stream()
+						.collect(Collectors.groupingBy(SnmpSource::getStatus, Collectors.counting()));
 				exchange.getIn().setBody(stats);
 				return;
 			}
@@ -197,8 +180,8 @@ public class SourceInventoryService {
 		map.put("snmpCommunity", source.getTarget().getCommunity().toString());
 		map.put("ifNumber", source.getIftable().size());
 		map.put("pollTime", source.getPollTime());
-		long counter_up = source.getInterfaces().stream().filter(e -> e.getIfAdminStatus() == 1
-				&& e.getIfOperStatus() == 1).count();
+		long counter_up = source.getInterfaces().stream()
+				.filter(e -> e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1).count();
 		map.put("pollStatusUp", counter_up );
 		map.put("pollStatusDown", source.getIftable().size() - counter_up);
 		return map;
@@ -219,11 +202,13 @@ public class SourceInventoryService {
 		String status = exchange.getIn().getHeader("pollStatus", String.class);
 		if (status != null) {
 			if ("up".equalsIgnoreCase(status)) {
-				exchange.getIn().setBody(sources.get(source).getInterfaces().stream().filter(e -> e.getIfAdminStatus() == 1
-					&& e.getIfOperStatus() == 1).collect(Collectors.toList()));
+				exchange.getIn().setBody(sources.get(source).getInterfaces().stream()
+						.filter(e -> e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1)
+						.collect(Collectors.toList()));
 			} else {
-				exchange.getIn().setBody(sources.get(source).getInterfaces().stream().filter(e -> (e.getIfAdminStatus() != 1
-						|| e.getIfOperStatus() != 1)).collect(Collectors.toList()));
+				exchange.getIn().setBody(sources.get(source).getInterfaces().stream()
+						.filter(e -> (e.getIfAdminStatus() != 1	|| e.getIfOperStatus() != 1))
+						.collect(Collectors.toList()));
 			}
 			return;
 		}
@@ -231,15 +216,11 @@ public class SourceInventoryService {
 	}
 
 	Function<SnmpSource, String> formatTraceRecord = source -> {
-		return source
-				.getIftable()
-				.values()
-				.stream()
-				.filter(e -> e.isPolling() && e.isTrace())
+		return source.getInterfaces().stream()
+				.filter(e -> e.isTrace())
 				.map(e -> {
 					StringBuilder sb = new StringBuilder();
-					sb.append(timeStampFormat.format(source.getPollTime()))
-							.append(fieldSeparator);
+					sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
 					sb.append(source.getIpAddress()).append(fieldSeparator);
 					sb.append(e.getIfIndex()).append(fieldSeparator);
 					sb.append(e.getIfDescr()).append(fieldSeparator);
@@ -255,13 +236,9 @@ public class SourceInventoryService {
 	};
 
 	Function<SnmpSource, String> formatChargingDataRecord = source -> {
-		return source
-				.getIftable()
-				.values()
-				.stream()
+		return source.getInterfaces().stream()
 				// print polling and interface is up
-				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1
-						&& e.getIfOperStatus() == 1)
+				.filter(e -> e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1)
 				.map(e -> {
 					StringBuilder sb = new StringBuilder();
 					sb.append(source.getIpAddress()).append(fieldSeparator);

@@ -27,6 +27,14 @@ public enum SnmpSourceStatus {
 		return this.message;
 	}
 
+	public boolean isUp() {
+		return this.code == 0;
+	}
+	
+	public boolean isDown() {
+		return this.code != 0 && this.code != 2; 
+	}
+	
 	static public boolean isMember(String aName) {
 		SnmpSourceStatus[] aTags = SnmpSourceStatus.values();
 		for (SnmpSourceStatus aTag : aTags)
