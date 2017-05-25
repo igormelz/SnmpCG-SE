@@ -20,6 +20,7 @@ public final class SnmpSource implements Serializable {
 	private final Map<String,SnmpInterface> iftable = new HashMap<String,SnmpInterface>();
 	private long pollTime;
 	private long pollDuration;
+	transient private boolean skipDelta = true;
 	
 	public SnmpSource(String ipAddress, CommunityTarget target) {
 		this.ipAddress = ipAddress;
@@ -81,7 +82,7 @@ public final class SnmpSource implements Serializable {
 	}
 
 	public void resetSnmpInterfaceCounters() {
-		iftable.values().forEach(SnmpInterface::resetPollCounters);
+		iftable.values().forEach(SnmpInterface::resetCounters);
 	}
 	
 	public SnmpInterface getSnmpInterface(String ifdescr) {
@@ -121,6 +122,14 @@ public final class SnmpSource implements Serializable {
 
 	public void setPollDuration(long pollDuration) {
 		this.pollDuration = pollDuration;
+	}
+
+	public boolean isSkipDelta() {
+		return skipDelta;
+	}
+
+	public void setSkipDelta(boolean skipDelta) {
+		this.skipDelta = skipDelta;
 	}
 
 }
