@@ -397,7 +397,7 @@ public class SourceInventoryService {
 				log.error("error read recoveryFile " + persistFileName, e);
 				return;
 			}
-			log.info("read recoveryState from " + persistFileName);
+			log.info("read recoveryState from file: " + persistFileName);
 		}
 	}
 
@@ -434,7 +434,7 @@ public class SourceInventoryService {
 			log.error("set recovery exception:", e);
 			return;
 		}
-		log.info("store recoveryState to " + persistFileName);
+		log.info("store recoveryState to file: " + persistFileName);
 	}
 
 }
