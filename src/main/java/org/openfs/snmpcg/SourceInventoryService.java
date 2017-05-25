@@ -34,6 +34,7 @@ import org.snmp4j.smi.GenericAddress;
 import org.snmp4j.smi.OctetString;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.openfs.snmpcg.model.SnmpInterface;
 import org.openfs.snmpcg.model.SnmpSource;
 import org.openfs.snmpcg.model.SnmpSourceStatus;
 
@@ -58,7 +59,7 @@ public class SourceInventoryService {
 	private SimpleDateFormat timeStampFormat;
 
 	@Value("${snmpcg.cdr.FieldSeparator:;}")
-	private char fieldSeparator;
+	private String fieldSeparator;
 
 	private Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
 
@@ -180,8 +181,7 @@ public class SourceInventoryService {
 		map.put("snmpCommunity", source.getTarget().getCommunity().toString());
 		map.put("ifNumber", source.getIftable().size());
 		map.put("pollTime", source.getPollTime());
-		long counter_up = source.getInterfaces().stream()
-				.filter(e -> e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1).count();
+		long counter_up = source.getInterfaces().stream().filter(SnmpInterface::isUp).count();
 		map.put("pollStatusUp", counter_up );
 		map.put("pollStatusDown", source.getIftable().size() - counter_up);
 		return map;
@@ -225,7 +225,7 @@ public class SourceInventoryService {
 					sb.append(e.getIfIndex()).append(fieldSeparator);
 					sb.append(e.getIfDescr()).append(fieldSeparator);
 					sb.append(e.getIfName()).append(fieldSeparator);
-					sb.append(e.getIfAlias().replace(fieldSeparator, '.')).append(fieldSeparator);
+					sb.append(e.getIfAlias().replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
 					sb.append(e.getIfAdminStatus()).append(fieldSeparator);
 					sb.append(e.getIfOperStatus()).append(fieldSeparator);
 					sb.append(e.getIfInOctets()).append(fieldSeparator);
@@ -238,14 +238,14 @@ public class SourceInventoryService {
 	Function<SnmpSource, String> formatChargingDataRecord = source -> {
 		return source.getInterfaces().stream()
 				// print polling and interface is up
-				.filter(e -> e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1)
+				.filter(SnmpInterface::isUp)
 				.map(e -> {
 					StringBuilder sb = new StringBuilder();
 					sb.append(source.getIpAddress()).append(fieldSeparator);
 					sb.append(e.getIfIndex()).append(fieldSeparator);
 					sb.append(e.getIfDescr()).append(fieldSeparator);
 					sb.append(e.getIfName()).append(fieldSeparator);
-					sb.append(e.getIfAlias().replace(fieldSeparator, '.')).append(fieldSeparator);
+					sb.append(e.getIfAlias().replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
 					sb.append(e.getPollInOctets()).append(fieldSeparator);
 					sb.append(e.getPollOutOctets()).append(fieldSeparator);
 					sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
