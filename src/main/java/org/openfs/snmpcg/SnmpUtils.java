@@ -67,8 +67,9 @@ public class SnmpUtils {
 
 	@Handler
 	public void pollStatus(@Body SnmpSource source) throws Exception {
-
-		log.info("source {}: poll status", source.getIpAddress());
+		if(log.isDebugEnabled()) {
+			log.debug("source {}: poll status", source.getIpAddress());
+		}
 
 		List<TableEvent> events = getTable(source, STATUS_OIDS);
 
@@ -86,13 +87,14 @@ public class SnmpUtils {
 		// process sysUpTime
 		String uptime = vbs[0].getVariable().toString();
 		long sysUptime = events.get(0).getColumns()[0].getVariable().toLong();
-		
+
 		if (source.getSysUptime() != 0 && source.getSysUptime() > sysUptime) {
-			log.warn("source {}: was rebooted between pool. Reset all counter",	source.getIpAddress());
-			// reset pollCounters and duration
+			log.warn("source {}: was rebooted. Reset all counter",
+					source.getIpAddress());
+			// reset Counters and skip calcDelta on next poll
 			source.resetSnmpInterfaceCounters();
-			source.setPollDuration(0L);
-		} 
+			source.setSkipDelta(true);
+		}
 		source.setSysUptime(vbs[0].getVariable().toLong());
 
 		// update system info
@@ -174,34 +176,38 @@ public class SnmpUtils {
 										.toString());
 							}
 						});
-		log.info("source {}: status:SUCCESS, uptime:{}, ifNumber:{}[{}]",
+		log.info("source {}: SUCCESS, uptime:{}, ifNumber:{}[{}]",
 				source.getIpAddress(), uptime, events.size() - 1, ifNumber);
 	}
 
 	@Handler
 	public void pollCounters(@Body SnmpSource source) throws Exception {
+		if (log.isDebugEnabled()) {
+			log.debug("source {}: poll counters", source.getIpAddress());
+		}
 
-		log.info("source {}: poll counters", source.getIpAddress());
+		// get ifTable
 		List<TableEvent> events = getTable(source, COUNTER_OIDS);
 
 		// update pollTime
 		source.setPollTime(System.currentTimeMillis());
 
+		// return if no events was received 
 		if (events == null)
 			return;
 
 		// process sysUpTime
 		long sysUptime = events.get(0).getColumns()[0].getVariable().toLong();
 		if (source.getSysUptime() > sysUptime) {
-			log.warn("source {}: was rebooted between pool. Reset all counter",	source.getIpAddress());
-			// reset pollCounters and duration 
+			log.warn("source {}: was rebooted between pool. Reset all counter",
+					source.getIpAddress());
 			source.resetSnmpInterfaceCounters();
-			source.setPollDuration(0L);
+			source.setSkipDelta(true);
 		} else {
-			// calc duration in timeticks
+			// update duration
 			source.setPollDuration(sysUptime - source.getSysUptime());
 		}
-		
+
 		// update sysUptime
 		source.setSysUptime(sysUptime);
 
@@ -211,12 +217,13 @@ public class SnmpUtils {
 				.filter(event -> event != null)
 				.forEach(
 						event -> {
-
 							if (event.isError()) {
 								log.error(
-										"source {}: on ifTable in response:{}",
+										"source {}: index:{} error in response:{}",
 										source.getIpAddress(),
-										event.getErrorMessage());
+										event.getIndex() != null ? event
+												.getIndex().get(0) : -1, event
+												.getErrorMessage());
 								return;
 							}
 
@@ -232,7 +239,8 @@ public class SnmpUtils {
 
 							// get ifEntry
 							String ifdescr = vb[1].getVariable().toString();
-							SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
+							SnmpInterface ifEntry = source
+									.getSnmpInterface(ifdescr);
 
 							// update AdminStatus
 							if (vb[2] != null) {
@@ -246,35 +254,36 @@ public class SnmpUtils {
 										.toInt());
 							}
 
-							// update counters if interface is up
-							if (ifEntry.getIfAdminStatus() == 1
-									&& ifEntry.getIfOperStatus() == 1) {
+							// get ifInOctets, ifOutOctets
+							SnmpCounter bytes_in = getCounterValue(vb[4], vb[5]);
+							SnmpCounter bytes_out = getCounterValue(vb[6],
+									vb[7]);
 
-								// get bytes_in, bytes_out
-								SnmpCounter bytes_in = getCounterValue(vb[4],
-										vb[5]);
-								SnmpCounter bytes_out = getCounterValue(vb[6],
-										vb[7]);
-
-								// calculate delta counters for next success poll
-								if (source.getPollDuration() != 0L) {
-									ifEntry.setPollInOctets(calcDeltaCounter(
-											source.getIpAddress(), ifdescr,
-											bytes_in, ifEntry.getIfInOctets()));
-									ifEntry.setPollOutOctets(calcDeltaCounter(
-											source.getIpAddress(), ifdescr,
-											bytes_out, ifEntry.getIfOutOctets()));
-								}
-
-								// keep counter values
-								ifEntry.setIfInOctets(bytes_in);
-								ifEntry.setIfOutOctets(bytes_out);
+							// calculate delta counters
+							if (ifEntry.isUp() && !source.isSkipDelta()) {
+								ifEntry.setPollInOctets(calcDeltaCounter(
+										source.getIpAddress(), ifdescr,
+										bytes_in, ifEntry.getIfInOctets()));
+								ifEntry.setPollOutOctets(calcDeltaCounter(
+										source.getIpAddress(), ifdescr,
+										bytes_out, ifEntry.getIfOutOctets()));
 							}
+
+							// update counter values
+							ifEntry.setIfInOctets(bytes_in);
+							ifEntry.setIfOutOctets(bytes_out);
 						});
 
-		log.info("source {}: poll processed: uptime:{}, ifNumber:{}", source
-				.getIpAddress(), events.get(0).getColumns()[0].getVariable()
-				.toString(), events.size() - 1);
+		// reset skipDelta 
+		if(source.isSkipDelta()) {
+			source.setSkipDelta(false);
+		}
+		
+		if (log.isDebugEnabled()) {
+			log.debug("source {}: poll processed: uptime:{}, ifNumber:{}",
+					source.getIpAddress(), events.get(0).getColumns()[0]
+							.getVariable().toString(), events.size() - 1);
+		}
 	}
 
 	private List<TableEvent> getTable(SnmpSource source, OID[] oids)
