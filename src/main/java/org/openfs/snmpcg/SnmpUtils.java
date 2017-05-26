@@ -29,18 +29,23 @@ public class SnmpUtils {
 			new OID("1.3.6.1.2.1.1.3"),
 			// ifDescr[1]
 			new OID(".1.3.6.1.2.1.2.2.1.2"),
-			// ifAdminStatus[2]
-			new OID(".1.3.6.1.2.1.2.2.1.7"),
-			// ifOperStatus[3]
-			new OID(".1.3.6.1.2.1.2.2.1.8"),
-			// IfInOctets[4]
+			// IfInOctets[2]
 			new OID(".1.3.6.1.2.1.2.2.1.10."),
-			// IfHCIn64[5]
+			// IfHCIn64[3]
 			new OID(".1.3.6.1.2.1.31.1.1.1.6."),
-			// IfOutOctest[6]
+			// IfOutOctest[4]
 			new OID(".1.3.6.1.2.1.2.2.1.16."),
-			// IfHCOut64[7]
-			new OID(".1.3.6.1.2.1.31.1.1.1.10.") };
+			// IfHCOut64[5]
+			new OID(".1.3.6.1.2.1.31.1.1.1.10."),
+			// ifAdminStatus[6]
+			new OID(".1.3.6.1.2.1.2.2.1.7"),
+			// ifOperStatus[7]
+			new OID(".1.3.6.1.2.1.2.2.1.8"),
+			// ifName[8]
+			new OID("1.3.6.1.2.1.31.1.1.1.1"),
+			// ifAlias[9]
+			new OID("1.3.6.1.2.1.31.1.1.1.18")
+	};
 
 	private final static OID STATUS_OIDS[] = new OID[] {
 			// sysUpTime[0]
@@ -63,7 +68,8 @@ public class SnmpUtils {
 			// ifName[8]
 			new OID("1.3.6.1.2.1.31.1.1.1.1"),
 			// ifAlias[9]
-			new OID("1.3.6.1.2.1.31.1.1.1.18"), };
+			new OID("1.3.6.1.2.1.31.1.1.1.18") 
+	};
 
 	@Handler
 	public void pollStatus(@Body SnmpSource source) throws Exception {
@@ -146,35 +152,11 @@ public class SnmpUtils {
 
 							// get ifEntry
 							SnmpInterface ifEntry = source
-									.getSnmpInterface(vb[5].getVariable()
+									.getSnmpInterface(event.getColumns()[5].getVariable()
 											.toString());
 
-							// update ifindex
-							ifEntry.setIfIndex(event.getIndex().get(0));
-
-							// update adminStatus
-							if (vb[6] != null) {
-								ifEntry.setIfAdminStatus(vb[6].getVariable()
-										.toInt());
-							}
-
-							// update operStatus
-							if (vb[7] != null) {
-								ifEntry.setIfOperStatus(vb[7].getVariable()
-										.toInt());
-							}
-
-							// update ifName
-							if (vb[8] != null && ifEntry.getIfName() == null) {
-								ifEntry.setIfName(vb[8].getVariable()
-										.toString());
-							}
-
-							// update ifAlias
-							if (vb[9] != null && ifEntry.getIfAlias() == null) {
-								ifEntry.setIfAlias(vb[9].getVariable()
-										.toString());
-							}
+							updateIfEntry(ifEntry, event);
+							
 						});
 		log.info("source {}: SUCCESS, uptime:{}, ifNumber:{}[{}]",
 				source.getIpAddress(), uptime, events.size() - 1, ifNumber);
@@ -239,25 +221,13 @@ public class SnmpUtils {
 
 							// get ifEntry
 							String ifdescr = vb[1].getVariable().toString();
-							SnmpInterface ifEntry = source
-									.getSnmpInterface(ifdescr);
+							SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
 
-							// update AdminStatus
-							if (vb[2] != null) {
-								ifEntry.setIfAdminStatus(vb[2].getVariable()
-										.toInt());
-							}
-
-							// update OperStatus
-							if (vb[3] != null) {
-								ifEntry.setIfOperStatus(vb[3].getVariable()
-										.toInt());
-							}
-
+							updateIfEntry(ifEntry, event);
+							
 							// get ifInOctets, ifOutOctets
-							SnmpCounter bytes_in = getCounterValue(vb[4], vb[5]);
-							SnmpCounter bytes_out = getCounterValue(vb[6],
-									vb[7]);
+							SnmpCounter bytes_in = getCounterValue(vb[2], vb[3]);
+							SnmpCounter bytes_out = getCounterValue(vb[4], vb[5]);
 
 							// calculate delta counters
 							if (ifEntry.isUp() && !source.isSkipDelta()) {
@@ -368,5 +338,35 @@ public class SnmpUtils {
 
 		return 0L;
 	}
+	
+	private void updateIfEntry(SnmpInterface ifEntry, TableEvent event) {
+		
+		// update ifindex
+		ifEntry.setIfIndex(event.getIndex().get(0));
 
+		// update adminStatus
+		if (event.getColumns()[6] != null) {
+			ifEntry.setIfAdminStatus(event.getColumns()[6].getVariable()
+					.toInt());
+		}
+
+		// update operStatus
+		if (event.getColumns()[7] != null) {
+			ifEntry.setIfOperStatus(event.getColumns()[7].getVariable()
+					.toInt());
+		}
+
+		// update ifName
+		if (event.getColumns()[8] != null && ifEntry.getIfName() == null) {
+			ifEntry.setIfName(event.getColumns()[8].getVariable()
+					.toString());
+		}
+
+		// update ifAlias
+		if (event.getColumns()[9] != null && ifEntry.getIfAlias() == null) {
+			ifEntry.setIfAlias(event.getColumns()[9].getVariable()
+					.toString());
+		}
+		
+	}
 }
