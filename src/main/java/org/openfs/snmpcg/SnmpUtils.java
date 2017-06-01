@@ -123,20 +123,11 @@ public class SnmpUtils {
 		// process ifEntry
 		events.subList(1, events.size())
 				.stream()
+				.filter(event -> event != null && !event.isError())
 				.forEach(
 						event -> {
-
-							if (event.isError()) {
-								log.error(
-										"source {}: on ifTable in response:{}",
-										source.getIpAddress(),
-										event.getErrorMessage());
-								return;
-							}
-
-							// get ifEntry
-							VariableBinding vb[] = event.getColumns();
-							if (vb == null || vb.length < 6) {
+							
+							if (event.getColumns() == null || event.getColumns().length < 6) {
 								log.warn("source {}: no ifTable in response",
 										source.getIpAddress());
 								return;
@@ -196,19 +187,9 @@ public class SnmpUtils {
 		// process ifEntry
 		events.subList(1, events.size())
 				.stream()
-				.filter(event -> event != null)
+				.filter(event -> event != null && !event.isError())
 				.forEach(
 						event -> {
-							if (event.isError()) {
-								log.error(
-										"source {}: index:{} error in response:{}",
-										source.getIpAddress(),
-										event.getIndex() != null ? event
-												.getIndex().get(0) : -1, event
-												.getErrorMessage());
-								return;
-							}
-
 							VariableBinding vb[] = event.getColumns();
 
 							// validate ifDescr
