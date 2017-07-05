@@ -18,6 +18,7 @@ import org.openfs.snmpcg.model.SnmpSourceStatus;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class SnmpUtils {
 
@@ -45,8 +46,7 @@ public class SnmpUtils {
 			// ifName[8]
 			new OID("1.3.6.1.2.1.31.1.1.1.1"),
 			// ifAlias[9]
-			new OID("1.3.6.1.2.1.31.1.1.1.18")
-	};
+			new OID("1.3.6.1.2.1.31.1.1.1.18") };
 
 	private final static OID STATUS_OIDS[] = new OID[] {
 			// sysUpTime[0]
@@ -69,12 +69,11 @@ public class SnmpUtils {
 			// ifName[8]
 			new OID("1.3.6.1.2.1.31.1.1.1.1"),
 			// ifAlias[9]
-			new OID("1.3.6.1.2.1.31.1.1.1.18") 
-	};
+			new OID("1.3.6.1.2.1.31.1.1.1.18") };
 
 	@Handler
 	public void pollStatus(@Body SnmpSource source) throws Exception {
-		if(log.isDebugEnabled()) {
+		if (log.isDebugEnabled()) {
 			log.debug("source {}: poll status", source.getIpAddress());
 		}
 
@@ -127,8 +126,9 @@ public class SnmpUtils {
 				.filter(event -> event != null && !event.isError())
 				.forEach(
 						event -> {
-							
-							if (event.getColumns() == null || event.getColumns().length < 6) {
+
+							if (event.getColumns() == null
+									|| event.getColumns().length < 6) {
 								log.warn("source {}: no ifTable in response",
 										source.getIpAddress());
 								return;
@@ -144,11 +144,11 @@ public class SnmpUtils {
 
 							// get ifEntry
 							SnmpInterface ifEntry = source
-									.getSnmpInterface(event.getColumns()[5].getVariable()
-											.toString());
+									.getSnmpInterface(event.getColumns()[5]
+											.getVariable().toString());
 
 							updateIfEntry(ifEntry, event);
-							
+
 						});
 		log.info("source {}: SUCCESS, uptime:{}, ifNumber:{}[{}]",
 				source.getIpAddress(), uptime, events.size() - 1, ifNumber);
@@ -166,7 +166,7 @@ public class SnmpUtils {
 		// update pollTime
 		source.setPollTime(System.currentTimeMillis());
 
-		// return if no events was received 
+		// return if no events was received
 		if (events == null)
 			return;
 
@@ -185,71 +185,76 @@ public class SnmpUtils {
 		// update sysUptime
 		source.setSysUptime(sysUptime);
 
-		// keep poll ifTable 
+		// keep poll ifTable
 		List<String> processedIF = new ArrayList<String>(events.size());
-		
+
 		// process ifEntry
 		events.subList(1, events.size())
 				.stream()
 				.filter(event -> event != null && !event.isError())
-				.forEach(
-						event -> {
-							VariableBinding vb[] = event.getColumns();
+				.forEach(event -> {
+					VariableBinding vb[] = event.getColumns();
 
-							// validate ifDescr
-							if (vb == null || vb.length < 1 || vb[1] == null) {
-								log.warn("source {}: no ifDescr for index:{}",
-										source.getIpAddress(), event.getIndex()
-												.get(0));
-								return;
-							}
+					// validate ifDescr
+						if (vb == null || vb.length < 1 || vb[1] == null) {
+							log.warn("source {}: no ifDescr for index:{}",
+									source.getIpAddress(), event.getIndex()
+											.get(0));
+							return;
+						}
 
-							// get ifEntry
-							String ifdescr = vb[1].getVariable().toString();
-							// get ifEntry
-							SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
-							// add to pollIf
-							processedIF.add(ifdescr);
+						// get ifEntry
+						String ifdescr = vb[1].getVariable().toString();
+						// get ifEntry
+						SnmpInterface ifEntry = source
+								.getSnmpInterface(ifdescr);
+						// add to pollIf
+						processedIF.add(ifdescr);
 
-							updateIfEntry(ifEntry, event);
-							
-							// get ifInOctets, ifOutOctets
-							SnmpCounter bytes_in = getCounterValue(vb[2], vb[3]);
-							SnmpCounter bytes_out = getCounterValue(vb[4], vb[5]);
+						updateIfEntry(ifEntry, event);
 
-							// calculate delta counters
-							if (ifEntry.isUp() && !source.isSkipDelta()) {
-								ifEntry.setPollInOctets(calcDeltaCounter(
-										source.getIpAddress(), ifdescr,
-										bytes_in, ifEntry.getIfInOctets()));
-								ifEntry.setPollOutOctets(calcDeltaCounter(
-										source.getIpAddress(), ifdescr,
-										bytes_out, ifEntry.getIfOutOctets()));
-							}
+						// get ifInOctets, ifOutOctets
+						SnmpCounter bytes_in = getCounterValue(vb[2], vb[3]);
+						SnmpCounter bytes_out = getCounterValue(vb[4], vb[5]);
 
-							// update counter values
-							ifEntry.setIfInOctets(bytes_in);
-							ifEntry.setIfOutOctets(bytes_out);
-						});
+						// calculate delta counters
+						if (ifEntry.isUp() && !source.isSkipDelta()) {
+							ifEntry.setPollInOctets(calcDeltaCounter(
+									source.getIpAddress(), ifdescr, bytes_in,
+									ifEntry.getIfInOctets()));
+							ifEntry.setPollOutOctets(calcDeltaCounter(
+									source.getIpAddress(), ifdescr, bytes_out,
+									ifEntry.getIfOutOctets()));
+						}
 
-		// reset skipDelta 
-		if(source.isSkipDelta()) {
+						// update counter values
+						ifEntry.setIfInOctets(bytes_in);
+						ifEntry.setIfOutOctets(bytes_out);
+					});
+
+		// reset skipDelta
+		if (source.isSkipDelta()) {
 			source.setSkipDelta(false);
 		}
-		
+
 		if (log.isDebugEnabled()) {
 			log.debug("source {}: poll processed: uptime:{}, ifNumber:{}",
 					source.getIpAddress(), events.get(0).getColumns()[0]
 							.getVariable().toString(), events.size() - 1);
 		}
-		
-		// validate source ifTable 
-		source.getIftable().keySet().stream().forEach(ifdescr -> {
-			if (!processedIF.contains(ifdescr)) {
+
+		// validate source ifTable
+		List<String> toremove = source.getIftable().keySet().stream()
+				.filter(ifdescr -> !processedIF.contains(ifdescr))
+				.collect(Collectors.toList());
+		//remove not existing interfaces
+		if (toremove != null && !toremove.isEmpty()) {
+			for (String ifdescr : toremove) {
 				source.removeSnmpInterace(ifdescr);
-				log.info("source {}: remove not existing interface:{}", source.getIpAddress(), ifdescr );
+				log.info("source {}: remove not existing ifdescr:{}",
+						source.getIpAddress(), ifdescr);
 			}
-		});
+		}
 	}
 
 	private List<TableEvent> getTable(SnmpSource source, OID[] oids)
@@ -334,9 +339,9 @@ public class SnmpUtils {
 
 		return 0L;
 	}
-	
+
 	private void updateIfEntry(SnmpInterface ifEntry, TableEvent event) {
-		
+
 		// update ifindex
 		ifEntry.setIfIndex(event.getIndex().get(0));
 
@@ -348,21 +353,18 @@ public class SnmpUtils {
 
 		// update operStatus
 		if (event.getColumns()[7] != null) {
-			ifEntry.setIfOperStatus(event.getColumns()[7].getVariable()
-					.toInt());
+			ifEntry.setIfOperStatus(event.getColumns()[7].getVariable().toInt());
 		}
 
 		// update ifName
 		if (event.getColumns()[8] != null && ifEntry.getIfName() == null) {
-			ifEntry.setIfName(event.getColumns()[8].getVariable()
-					.toString());
+			ifEntry.setIfName(event.getColumns()[8].getVariable().toString());
 		}
 
 		// update ifAlias
 		if (event.getColumns()[9] != null && ifEntry.getIfAlias() == null) {
-			ifEntry.setIfAlias(event.getColumns()[9].getVariable()
-					.toString());
+			ifEntry.setIfAlias(event.getColumns()[9].getVariable().toString());
 		}
-		
+
 	}
 }
