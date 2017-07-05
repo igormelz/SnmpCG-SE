@@ -41,7 +41,8 @@ import org.openfs.snmpcg.model.SnmpSourceStatus;
 @Service("sources")
 public class SourceInventoryService {
 
-	private static final Logger log = LoggerFactory.getLogger(SourceInventoryService.class);
+	private static final Logger log = LoggerFactory
+			.getLogger(SourceInventoryService.class);
 
 	@Value("${snmpcg.snmp.community:public}")
 	private String community;
@@ -110,7 +111,8 @@ public class SourceInventoryService {
 		// parse ip<delimiter>community
 		String[] values = source.trim().split(delimiter, 2);
 		String parsedIpAddr = values[0];
-		String parsedCommunity = (values.length > 1 && !values[1].isEmpty()) ? values[1] : community;
+		String parsedCommunity = (values.length > 1 && !values[1].isEmpty()) ? values[1]
+				: community;
 
 		if (!Pattern.matches("\\d+.\\d+.\\d+.\\d+", parsedIpAddr)) {
 			log.error("wrong IPADDR for source:" + parsedIpAddr);
@@ -124,7 +126,8 @@ public class SourceInventoryService {
 		}
 
 		addSource(parsedIpAddr, parsedCommunity);
-		log.info("parsed source {}, community [{}]", parsedIpAddr, parsedCommunity);
+		log.info("parsed source {}, community [{}]", parsedIpAddr,
+				parsedCommunity);
 	}
 
 	/**
@@ -139,10 +142,10 @@ public class SourceInventoryService {
 		// process query parameter status
 		String status = exchange.getIn().getHeader("status", String.class);
 		if (status != null && SnmpSourceStatus.isMember(status)) {
-			SnmpSourceStatus qStatus = SnmpSourceStatus.valueOf(status.toUpperCase());
+			SnmpSourceStatus qStatus = SnmpSourceStatus.valueOf(status
+					.toUpperCase());
 			List<Map<String, Object>> answer = sources.values().stream()
-					.filter(e -> e.getStatus() == qStatus)
-					.map(mapSource)
+					.filter(e -> e.getStatus() == qStatus).map(mapSource)
 					.collect(Collectors.toList());
 			exchange.getIn().setBody(answer);
 			return;
@@ -158,8 +161,12 @@ public class SourceInventoryService {
 			}
 
 			if ("stats".equalsIgnoreCase(queryString)) {
-				Map<SnmpSourceStatus, Long> stats = sources.values().stream()
-						.collect(Collectors.groupingBy(SnmpSource::getStatus, Collectors.counting()));
+				Map<SnmpSourceStatus, Long> stats = sources
+						.values()
+						.stream()
+						.collect(
+								Collectors.groupingBy(SnmpSource::getStatus,
+										Collectors.counting()));
 				exchange.getIn().setBody(stats);
 				return;
 			}
@@ -181,10 +188,36 @@ public class SourceInventoryService {
 		map.put("snmpCommunity", source.getTarget().getCommunity().toString());
 		map.put("ifNumber", source.getIftable().size());
 		map.put("pollTime", source.getPollTime());
-		long counter_up = source.getInterfaces().stream().filter(SnmpInterface::isUp).count();
-		map.put("pollStatusUp", counter_up );
+		long counter_up = source.getInterfaces().stream()
+				.filter(SnmpInterface::isUp).count();
+		map.put("pollStatusUp", counter_up);
 		map.put("pollStatusDown", source.getIftable().size() - counter_up);
 		return map;
+	};
+
+	@Handler
+	public void getChargingInterfaces(Exchange exchange) {
+		exchange.getIn().setBody(sources.values().stream().map(mapChargingData).flatMap(List::stream)
+				.collect(Collectors.toList()));
+	}
+
+	Function<SnmpSource, List<Map<String, Object>>> mapChargingData = source -> {
+		List<Map<String, Object>> answer = source.getInterfaces()
+				.stream()
+				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1
+						&& e.getIfOperStatus() == 1)
+				.map(e -> {
+					Map<String, Object> iface = new HashMap<String, Object>();
+					iface.put("Ip", source.getIpAddress());
+					iface.put("sysName", source.getSysName());
+					iface.put("ifindex", e.getIfIndex());
+					iface.put("ifdescr", e.getIfDescr());
+					iface.put("ifalias", e.getIfAlias());
+					iface.put("pollInOctets", e.getPollInOctets());
+					iface.put("pollOutOctets", e.getPollOutOctets());
+					return iface;			
+				}).collect(Collectors.toList());
+		return answer;
 	};
 
 	@Handler
@@ -197,18 +230,26 @@ public class SourceInventoryService {
 			exchange.getIn().setBody(answer);
 			return;
 		}
-		
+
 		// process query parameter status
 		String status = exchange.getIn().getHeader("pollStatus", String.class);
 		if (status != null) {
 			if ("up".equalsIgnoreCase(status)) {
-				exchange.getIn().setBody(sources.get(source).getInterfaces().stream()
-						.filter(e -> e.getIfAdminStatus() == 1 && e.getIfOperStatus() == 1)
-						.collect(Collectors.toList()));
+				exchange.getIn().setBody(
+						sources.get(source)
+								.getInterfaces()
+								.stream()
+								.filter(e -> e.getIfAdminStatus() == 1
+										&& e.getIfOperStatus() == 1)
+								.collect(Collectors.toList()));
 			} else {
-				exchange.getIn().setBody(sources.get(source).getInterfaces().stream()
-						.filter(e -> (e.getIfAdminStatus() != 1	|| e.getIfOperStatus() != 1))
-						.collect(Collectors.toList()));
+				exchange.getIn().setBody(
+						sources.get(source)
+								.getInterfaces()
+								.stream()
+								.filter(e -> (e.getIfAdminStatus() != 1 || e
+										.getIfOperStatus() != 1))
+								.collect(Collectors.toList()));
 			}
 			return;
 		}
@@ -216,16 +257,21 @@ public class SourceInventoryService {
 	}
 
 	Function<SnmpSource, String> formatTraceRecord = source -> {
-		return source.getInterfaces().stream()
+		return source
+				.getInterfaces()
+				.stream()
 				.filter(e -> e.isTrace())
 				.map(e -> {
 					StringBuilder sb = new StringBuilder();
-					sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
+					sb.append(timeStampFormat.format(source.getPollTime()))
+							.append(fieldSeparator);
 					sb.append(source.getIpAddress()).append(fieldSeparator);
 					sb.append(e.getIfIndex()).append(fieldSeparator);
 					sb.append(e.getIfDescr()).append(fieldSeparator);
 					sb.append(e.getIfName()).append(fieldSeparator);
-					sb.append(e.getIfAlias().replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
+					sb.append(
+							e.getIfAlias().replace(fieldSeparator.charAt(0),
+									'.')).append(fieldSeparator);
 					sb.append(e.getIfAdminStatus()).append(fieldSeparator);
 					sb.append(e.getIfOperStatus()).append(fieldSeparator);
 					sb.append(e.getIfInOctets()).append(fieldSeparator);
@@ -236,7 +282,8 @@ public class SourceInventoryService {
 	};
 
 	Function<SnmpSource, String> formatChargingDataRecord = source -> {
-		return source.getInterfaces().stream()
+		return source.getInterfaces()
+				.stream()
 				// print polling and interface is up
 				.filter(SnmpInterface::isUp)
 				.map(e -> {
@@ -245,10 +292,13 @@ public class SourceInventoryService {
 					sb.append(e.getIfIndex()).append(fieldSeparator);
 					sb.append(e.getIfDescr()).append(fieldSeparator);
 					sb.append(e.getIfName()).append(fieldSeparator);
-					sb.append(e.getIfAlias().replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
+					sb.append(
+							e.getIfAlias().replace(fieldSeparator.charAt(0),
+									'.')).append(fieldSeparator);
 					sb.append(e.getPollInOctets()).append(fieldSeparator);
 					sb.append(e.getPollOutOctets()).append(fieldSeparator);
-					sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
+					sb.append(timeStampFormat.format(source.getPollTime()))
+							.append(fieldSeparator);
 					sb.append(source.getPollDuration());
 					return sb.toString();
 				}).collect(Collectors.joining("\n"));
@@ -313,7 +363,7 @@ public class SourceInventoryService {
 		SnmpSource source = sources.get(sourceIpAddr);
 		if (source == null) {
 			Map<String, Object> answer = new HashMap<String, Object>(1);
-			answer.put("Status", "source "+sourceIpAddr+" not found");
+			answer.put("Status", "source " + sourceIpAddr + " not found");
 			return answer;
 		}
 		return mapSource.apply(sources.get(sourceIpAddr));

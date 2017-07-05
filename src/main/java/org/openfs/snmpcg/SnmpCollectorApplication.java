@@ -84,6 +84,9 @@ public class SnmpCollectorApplication {
 					.param().name("polling").description("filter by polling status").type(RestParamType.query).endParam()
 					.to("bean:sources?method=getSourceInterfaces")
 					
+					.get("/sources/interfaces")
+					.to("bean:sources?method=getChargingInterfaces")
+					
 					//.put("/sources/{source}/interfaces/{ifDescr}")
 					//.to("bean:sources?method=updateInterface(${header.source},${header.ifDescr})")
 					;
