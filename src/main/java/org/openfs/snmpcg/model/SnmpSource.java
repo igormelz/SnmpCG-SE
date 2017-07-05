@@ -31,14 +31,47 @@ public final class SnmpSource implements Serializable {
 		return status;
 	}
 
+	public CommunityTarget getTarget() {
+		return target;
+	}
+
+	public String getSysDescr() {
+		return sysDescr;
+	}
+
+	public String getSysLocation() {
+		return sysLocation;
+	}
+
+	public SnmpInterface getSnmpInterface(String ifdescr) {
+		SnmpInterface entry = iftable.get(ifdescr);
+		if( entry == null ) {
+			entry = new SnmpInterface(ifdescr);
+			iftable.putIfAbsent(ifdescr, entry);
+		}
+		return entry;
+	}
+
+	public void removeSnmpInterace(String ifdescr) {
+		if (iftable.containsKey(ifdescr)) {
+			iftable.remove(ifdescr);
+		}
+	}
+	
+	public Map<String,SnmpInterface> getIftable() {
+		return iftable;
+	}
+
+	public List<SnmpInterface> getInterfaces() {
+		return iftable.values().stream()
+				.filter(e -> e.isPolling())
+				.collect(Collectors.toList());
+	}
+
 	public void setStatus(SnmpSourceStatus status) {
 		this.status = status;
 	}
 
-	public CommunityTarget getTarget() {
-		return target;
-	}
-	
 	@Override
 	public String toString() {
 		return String.format("%s|%s|%s|%s"
@@ -47,10 +80,6 @@ public final class SnmpSource implements Serializable {
 				,status
 				,sysName
 				);
-	}
-
-	public String getSysDescr() {
-		return sysDescr;
 	}
 
 	public void setSysDescr(String sysDescr) {
@@ -73,35 +102,12 @@ public final class SnmpSource implements Serializable {
 		this.sysUptime = sysUptime;
 	}
 	
-	public String getSysLocation() {
-		return sysLocation;
-	}
-
 	public void setSysLocation(String sysLocation) {
 		this.sysLocation = sysLocation;
 	}
 
 	public void resetSnmpInterfaceCounters() {
 		iftable.values().forEach(SnmpInterface::resetCounters);
-	}
-	
-	public SnmpInterface getSnmpInterface(String ifdescr) {
-		SnmpInterface entry = iftable.get(ifdescr);
-		if( entry == null ) {
-			entry = new SnmpInterface(ifdescr);
-			iftable.putIfAbsent(ifdescr, entry);
-		}
-		return entry;
-	}
-	
-	public Map<String,SnmpInterface> getIftable() {
-		return iftable;
-	}
-	
-	public List<SnmpInterface> getInterfaces() {
-		return iftable.values().stream()
-				.filter(e -> e.isPolling())
-				.collect(Collectors.toList());
 	}
 	
 	public long getPollTime() {

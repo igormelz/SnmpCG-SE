@@ -16,6 +16,7 @@ import org.openfs.snmpcg.model.SnmpInterface;
 import org.openfs.snmpcg.model.SnmpSource;
 import org.openfs.snmpcg.model.SnmpSourceStatus;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SnmpUtils {
@@ -184,6 +185,9 @@ public class SnmpUtils {
 		// update sysUptime
 		source.setSysUptime(sysUptime);
 
+		// keep poll ifTable 
+		List<String> processedIF = new ArrayList<String>(events.size());
+		
 		// process ifEntry
 		events.subList(1, events.size())
 				.stream()
@@ -202,7 +206,10 @@ public class SnmpUtils {
 
 							// get ifEntry
 							String ifdescr = vb[1].getVariable().toString();
+							// get ifEntry
 							SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
+							// add to pollIf
+							processedIF.add(ifdescr);
 
 							updateIfEntry(ifEntry, event);
 							
@@ -235,6 +242,14 @@ public class SnmpUtils {
 					source.getIpAddress(), events.get(0).getColumns()[0]
 							.getVariable().toString(), events.size() - 1);
 		}
+		
+		// validate source ifTable 
+		source.getIftable().keySet().stream().forEach(ifdescr -> {
+			if (!processedIF.contains(ifdescr)) {
+				source.removeSnmpInterace(ifdescr);
+				log.info("source {}: remove not existing interface:{}", source.getIpAddress(), ifdescr );
+			}
+		});
 	}
 
 	private List<TableEvent> getTable(SnmpSource source, OID[] oids)
