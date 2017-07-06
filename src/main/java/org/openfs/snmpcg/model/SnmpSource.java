@@ -21,6 +21,7 @@ public final class SnmpSource implements Serializable {
 	private long pollTime;
 	private long pollDuration;
 	transient private boolean skipDelta = true;
+	transient private long pollResponse;
 	
 	public SnmpSource(String ipAddress, CommunityTarget target) {
 		this.ipAddress = ipAddress;
@@ -138,4 +139,11 @@ public final class SnmpSource implements Serializable {
 		this.skipDelta = skipDelta;
 	}
 
+	public long getPollResponse() {
+		return pollResponse;
+	}
+	
+	public void setPollResponse(long t) {
+		pollResponse = t;
+	}
 }

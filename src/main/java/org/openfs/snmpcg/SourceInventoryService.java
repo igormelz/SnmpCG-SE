@@ -63,7 +63,7 @@ public class SourceInventoryService {
 	private String fieldSeparator;
 
 	private Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
-
+	
 	protected SnmpSource addSource(String ipaddr, String community) {
 		Address targetAddress = GenericAddress.parse("udp:" + ipaddr + "/161");
 		return addSource(ipaddr, targetAddress, community);
@@ -192,6 +192,7 @@ public class SourceInventoryService {
 				.filter(SnmpInterface::isUp).count();
 		map.put("pollStatusUp", counter_up);
 		map.put("pollStatusDown", source.getIftable().size() - counter_up);
+		map.put("pollResponse", source.getPollResponse());
 		return map;
 	};
 

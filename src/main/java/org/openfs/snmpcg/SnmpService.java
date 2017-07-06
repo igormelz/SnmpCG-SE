@@ -11,6 +11,9 @@ import org.snmp4j.transport.DefaultUdpTransportMapping;
 import org.snmp4j.util.DefaultPDUFactory;
 import org.snmp4j.util.TableEvent;
 import org.snmp4j.util.TableUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.metrics.GaugeService;
+import org.springframework.stereotype.Service;
 import org.openfs.snmpcg.model.SnmpCounter;
 import org.openfs.snmpcg.model.SnmpInterface;
 import org.openfs.snmpcg.model.SnmpSource;
@@ -20,7 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SnmpUtils {
+@Service("snmpService")
+public class SnmpService {
 
 	private static final Logger log = LoggerFactory.getLogger("SnmpService");
 
@@ -71,16 +75,26 @@ public class SnmpUtils {
 			// ifAlias[9]
 			new OID("1.3.6.1.2.1.31.1.1.1.18") };
 
+	private GaugeService gaugePollResponse;
+
+	@Autowired
+	public SnmpService(GaugeService gaugeService) {
+		this.gaugePollResponse = gaugeService;
+	}
+
 	@Handler
 	public void pollStatus(@Body SnmpSource source) throws Exception {
 		if (log.isDebugEnabled()) {
 			log.debug("source {}: poll status", source.getIpAddress());
 		}
-
+		
+		long startPollTime = System.currentTimeMillis();
 		List<TableEvent> events = getTable(source, STATUS_OIDS);
 
 		// update pollTime
-		source.setPollTime(System.currentTimeMillis());
+		long endPollTime = System.currentTimeMillis();
+		source.setPollTime(endPollTime);
+		source.setPollResponse((endPollTime - startPollTime));
 
 		// return if no response
 		if (events == null) {
@@ -160,11 +174,19 @@ public class SnmpUtils {
 			log.debug("source {}: poll counters", source.getIpAddress());
 		}
 
+		long startPollTime = System.currentTimeMillis();
+		
 		// get ifTable
 		List<TableEvent> events = getTable(source, COUNTER_OIDS);
 
 		// update pollTime
-		source.setPollTime(System.currentTimeMillis());
+		long endPollTime = System.currentTimeMillis();
+		source.setPollTime(endPollTime);
+		source.setPollResponse((endPollTime - startPollTime));
+		
+		// update metric
+		gaugePollResponse.submit("gauge.poll.response." + source.getIpAddress(),
+				(double) (endPollTime - startPollTime));
 
 		// return if no events was received
 		if (events == null)
@@ -247,11 +269,11 @@ public class SnmpUtils {
 		List<String> toremove = source.getIftable().keySet().stream()
 				.filter(ifdescr -> !processedIF.contains(ifdescr))
 				.collect(Collectors.toList());
-		//remove not existing interfaces
+		// remove not existing interfaces
 		if (toremove != null && !toremove.isEmpty()) {
 			for (String ifdescr : toremove) {
-				source.removeSnmpInterace(ifdescr);
-				log.info("source {}: remove not existing ifdescr:{}",
+				// source.removeSnmpInterace(ifdescr);
+				log.warn("source {}: not found in response ifdescr: {}",
 						source.getIpAddress(), ifdescr);
 			}
 		}

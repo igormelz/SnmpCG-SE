@@ -59,8 +59,8 @@
               <th>ifIndex</th>
               <th>ifDescr</th>
               <th>pollStatus</th>
-              <th>in_bytes</th>
-              <th>out_bytes</th>
+              <th>in (MB/s)</th>
+              <th>out (MB/s)</th>
             </tr>
           </thead>
           <tbody>
@@ -76,17 +76,8 @@
     <script src="js/datatables.min.js"></script>
     <!-- script src="js/jquery.dataTables.min.js"></script -->
     <script src="js/dataTables.bootstrap.min.js"></script>
+    <script src="js/script.js"></script>
     <script>
-        function getUrlParameter(sParam) {
-            var sPageURL = window.location.search.substring(1);
-            var sURLVariables = sPageURL.split('&');
-            for (var i = 0; i < sURLVariables.length; i++) {
-                var sParameterName = sURLVariables[i].split('=');
-                if (sParameterName[0] == sParam) {
-                    return sParameterName[1];
-                }
-            }
-        }
 
     var ip = getUrlParameter("ip");
     $("#address").text(ip);
@@ -100,23 +91,6 @@
     			window.location.href = "index.html";
     		}
 		});
-    }
-    
-    function pad(v) {
-    	return v<10?"0"+v:v;
-    }
-    
-    function uptime(timeticks) {
-    	var tt = timeticks;
-    	var d = Math.floor(tt / 8640000);
-    	tt %= 8640000;
-    	var h = Math.floor(tt / 360000);
-    	tt %= 360000;
-    	var m = Math.floor(tt / 6000);
-    	tt %= 6000;
-    	var s= Math.floor( tt / 100);
-    	tt %= 100;
-    	return d+" days, "+pad(h)+":"+pad(m)+":"+pad(s)+"."+tt; 
     }
     
     $.ajax({
@@ -148,19 +122,18 @@
             }
          }
     });
-       
+    
  	var dt = $('#ifTable').DataTable({
        ajax: {
         url: "/api/v1/sources/"+ip+"/interfaces",
         //dataSrc: '' 
         dataSrc: function(ifTable) {
           ifTable.forEach(function(ifEntry){
-          	//ifEntry.ifDescr = "<span class=\"glyphicon glyphicon-collapse-down\" aria-hidden=\"true\"></span> "+ifEntry.ifDescr;
           	ifEntry.ifDescr += (ifEntry.ifAlias)?" ("+ifEntry.ifAlias+")":"";
             ifEntry.pollStatus = (ifEntry.ifAdminStatus==1 && ifEntry.ifOperStatus==1)?"<span class=\"text-info\">up</span>":"<span class=\"text-danger\">down</span>";
-            ifEntry.bytes_in = Number.parseInt(ifEntry.pollInOctets).toLocaleString('en-EN');
-            ifEntry.bytes_out = Number.parseInt(ifEntry.pollOutOctets).toLocaleString('en-EN');
-            //console.log();
+            ifEntry.bytes_in = bandwith(ifEntry.pollInOctets);
+            ifEntry.bytes_out = bandwith(ifEntry.pollOutOctets);
+            //console.log(bandwith(ifEntry.pollOutOctets));
           });
           return ifTable;
         }
@@ -176,18 +149,21 @@
        	{ data: "bytes_in" },
        	{ data: "bytes_out" }
        ],
-       "order": [[1, 'asc']]
+       "order": [[5, 'desc']]
     });
 
 	function ifstatus(s) {
 		if (s == 1) return "(<b>up</b>)";
 		return "(<b>down</b>)";
 	}
+	
 	function format(d) {
 		return "<pre>ifAdminStatus="+d.ifAdminStatus+ifstatus(d.ifAdminStatus==1)
 			+" ifOperStatus="+d.ifOperStatus+ifstatus(d.ifOperStatus)
-			+" ifInOctets=<b>"+d.ifInOctets.value+"</b> type="+d.ifInOctets.type
-			+" ifOutOctets=<b>"+d.ifOutOctets.value+"</b> type="+d.ifOutOctets.type
+			+" pollInOctets="+d.pollInOctets
+			+" pollOutOctets="+d.pollOutOctets //Number.parseInt(d.pollOutOctets).toLocaleString('en-EN')
+			//+" ifInOctets=<b>"+d.ifInOctets.value+"</b> type="+d.ifInOctets.type
+			//+" ifOutOctets=<b>"+d.ifOutOctets.value+"</b> type="+d.ifOutOctets.type
 			+"</pre>";
 	}
 	

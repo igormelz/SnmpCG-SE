@@ -5,7 +5,9 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.servlet.CamelHttpTransportServlet;
 import org.apache.camel.model.rest.RestBindingMode;
 import org.apache.camel.model.rest.RestParamType;
+import org.apache.camel.spi.ThreadPoolProfile;
 import org.apache.camel.spring.boot.CamelContextConfiguration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
@@ -15,10 +17,26 @@ import org.springframework.stereotype.Component;
 @SpringBootApplication
 public class SnmpCollectorApplication {
 
+	@Value("${snmpcg.poll.threads.min:20}")
+	private int poolSize;
+	
+	@Value("${snmpcg.poll.threads.max:40}")
+	private int maxPoolSize;
+	
 	public static void main(String[] args) {
 		SpringApplication.run(SnmpCollectorApplication.class, args);
 	}
 
+	@Bean
+	ThreadPoolProfile camelThreadPoolProfile() {
+		ThreadPoolProfile customProfile = new ThreadPoolProfile();
+		customProfile.setId("SnmpCGThreadPoolProfile");
+		customProfile.setDefaultProfile(true);
+		customProfile.setPoolSize(poolSize);
+		customProfile.setMaxPoolSize(maxPoolSize);
+		return customProfile;
+	}
+	
 	@Bean
 	public ServletRegistrationBean camelServletRegistrationBean() {
 		ServletRegistrationBean registration = new ServletRegistrationBean(
@@ -102,15 +120,15 @@ public class SnmpCollectorApplication {
 			
 			from("direct:pollStatus")
 				.split(method("sources", "getDownSources")).parallelProcessing()
-					.bean(SnmpUtils.class, "pollStatus")
+					.bean("snmpService", "pollStatus")
 				.end()
 				;
 			
 			// scheduled poll counters
 			from("quartz2://snmp/poll?cron=0+0/5+*+*+*+?").routeId("pollCounters")
 					.log("start poll sources")
-					.split(method("sources", "getReadySources")).parallelProcessing()
-						.bean(SnmpUtils.class, "pollCounters")
+					.split(method("sources", "getReadySources")).parallelProcessing().executorServiceRef("SnmpCGThreadPoolProfile")
+						.bean("snmpService", "pollCounters")
 					.end()
 					// call external camel route 
 					.to("{{snmpcg.route.flushCounters}}")

@@ -30,7 +30,7 @@
         </div>  
         <!-- nav links -->
         <ul class="nav navbar-nav">
-          <li class="active"><a href="#">Sources</a></li>
+          <li class="active"><a href="index.html">Sources</a></li>
           <li><a href="charging.html">ChargeIF</a></li>
         </ul>
         <form class="navbar-form navbar-right">
@@ -86,7 +86,8 @@
             <tr>
               <th>Source</th>
               <th>ifNumber</th>
-              <th>last poll @</th>
+              <th>last poll</th>
+              <th>last response (ms)</th>
             </tr>
           </thead>
           <tbody>
@@ -101,13 +102,8 @@
     <script src="js/datatables.min.js"></script>
     <!-- script src="js/jquery.dataTables.min.js"></script -->
     <script src="js/dataTables.bootstrap.min.js"></script>
+    <script src="js/script.js"></script>
     <script>
-      function validateIPaddress(ipaddress) {
-        if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {
-          return (true)
-        }
-        return (false)
-      }
 
       function showNotif(message) {
         $('#source_add').text(message.Status);
@@ -203,7 +199,8 @@
        columns: [
         { data: "Ip" },
         { data: "ifNumber" },
-        { data: "pollTime" }
+        { data: "pollTime" },
+        { data: "pollResponse" }
        ]
     });
 
