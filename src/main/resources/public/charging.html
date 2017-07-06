@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon'/>
+
+    <title>SnmpCG - Admin Interface</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="css/vendor/bootstrap.min.css" rel="stylesheet">
+    <link href="css/dataTables.bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+    <!--[if lt IE 9]>
+      <script src="js/vendor/html5shiv.js"></script>
+      <script src="js/vendor/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+  	 <!-- Navigation -->
+    <nav class="navbar navbar-default" role="navigation">
+      <div class="container">
+      	<!-- brand -->
+        <div class="navbar-header">
+         <a class="navbar-brand" href="index.html">SnmpCG</a>
+        </div>  
+        <!-- nav links -->
+        <ul class="nav navbar-nav">
+          <li><a href="index.html">Sources</a></li>
+          <li class="active"><a href="charging.html">ChargeIF</a></li>
+        </ul>
+      </div>
+      <!-- /.container -->
+    </nav>
+    
+    <!-- page content -->
+    <div class="container">
+		<div class="row">
+        		<h2>Charging Interfaces</h2>
+        </div>
+        <div class="row">
+        <table id="tbl_data" class="table table-condensed">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>ifDescr</th>
+              <th>in (MB/s)</th>
+              <th>out (MB/s)</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>  
+        </table>
+        </div>
+    </div>
+    <!-- /.container -->
+
+    <!-- jQuery (necessary for Flat UI's JavaScript plugins) -->
+    <script src="js/vendor/jquery.min.js"></script>
+    <script src="js/datatables.min.js"></script>
+    <!-- script src="js/jquery.dataTables.min.js"></script -->
+    <script src="js/dataTables.bootstrap.min.js"></script>
+    <script src="js/script.js"></script>
+    <script>   
+	var table = $('#tbl_data').DataTable({
+       ajax: {
+        url: "/api/v1/sources/interfaces",
+        dataSrc: function(ifTable) {
+          ifTable.forEach(function(ifEntry){
+          	var source = "<a href=\"view.html?ip="+ifEntry.Ip+"\">";
+          	if (ifEntry.sysName) {
+            	source += ifEntry.sysName+" ["+ifEntry.Ip+"]</a>";
+          	} else {
+            	source += ifEntry.Ip + "</a>";
+            }
+            ifEntry.Ip = source;
+          	ifEntry.ifdescr += (ifEntry.ifalias)?" ("+ifEntry.ifalias+")":"";
+            ifEntry.bytes_in = bandwith(ifEntry.pollInOctets);
+            ifEntry.bytes_out = bandwith(ifEntry.pollOutOctets);
+            //console.log();
+          });
+          return ifTable;
+        }
+       },
+       lengthMenu: [[30, 50, 100, -1], [30, 50, 100, "All"]],
+       columns: [
+        { data: "Ip" },
+        { data: "ifdescr" },
+        { data: "bytes_in" },
+        { data: "bytes_out" }
+       ],
+       "order": [[3, 'desc']]
+    });      
+    </script>
+  </body>
+</html>
