@@ -16,6 +16,7 @@ public final class SnmpInterface implements Serializable {
 	private SnmpCounter ifOutOctets = new SnmpCounter();
 	private long pollInOctets;
 	private long pollOutOctets;
+	transient private boolean marked = false;
 
 	public SnmpInterface(String ifDescr) {
 		this.ifDescr = ifDescr;
@@ -130,5 +131,13 @@ public final class SnmpInterface implements Serializable {
 
 	public boolean isUp() {
 		return ifAdminStatus == 1 && ifOperStatus == 1;
+	}
+
+	public boolean isMarked() {
+		return marked;
+	}
+
+	public void setMarked() {
+		this.marked = true;
 	}
 }

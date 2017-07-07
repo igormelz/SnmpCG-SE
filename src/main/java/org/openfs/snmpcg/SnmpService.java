@@ -30,50 +30,29 @@ public class SnmpService {
 
 	private static final long COUNTER32_MAX_VALUE = 4294967295L;
 
-	private final static OID COUNTER_OIDS[] = new OID[] {
-			// sysUpTime[0]
-			new OID("1.3.6.1.2.1.1.3"),
-			// ifDescr[1]
-			new OID(".1.3.6.1.2.1.2.2.1.2"),
-			// IfInOctets[2]
-			new OID(".1.3.6.1.2.1.2.2.1.10."),
-			// IfHCIn64[3]
-			new OID(".1.3.6.1.2.1.31.1.1.1.6."),
-			// IfOutOctest[4]
-			new OID(".1.3.6.1.2.1.2.2.1.16."),
-			// IfHCOut64[5]
-			new OID(".1.3.6.1.2.1.31.1.1.1.10."),
-			// ifAdminStatus[6]
-			new OID(".1.3.6.1.2.1.2.2.1.7"),
-			// ifOperStatus[7]
-			new OID(".1.3.6.1.2.1.2.2.1.8"),
-			// ifName[8]
-			new OID("1.3.6.1.2.1.31.1.1.1.1"),
-			// ifAlias[9]
-			new OID("1.3.6.1.2.1.31.1.1.1.18") };
+	private static final OID sysUpTimeOID = new OID(".1.3.6.1.2.1.1.3");
+	private static final OID ifDescrOID = new OID(".1.3.6.1.2.1.2.2.1.2");
+	private static final OID sysDescrOID = new OID(".1.3.6.1.2.1.1.1");
+	private static final OID sysNameOID = new OID(".1.3.6.1.2.1.1.5");
+	private static final OID sysLocationOID = new OID(".1.3.6.1.2.1.1.6");
+	private static final OID ifNumberOID = new OID(".1.3.6.1.2.1.2.1");
+	private static final OID IfInOctetsOID = new OID(".1.3.6.1.2.1.2.2.1.10.");
+	private static final OID IfOutOctestOID = new OID(".1.3.6.1.2.1.2.2.1.16.");
+	private static final OID ifAdminStatusOID = new OID(".1.3.6.1.2.1.2.2.1.7");
+	private static final OID ifOperStatusOID = new OID(".1.3.6.1.2.1.2.2.1.8");
+	private static final OID ifNameOID = new OID("1.3.6.1.2.1.31.1.1.1.1");
+	private static final OID ifAliasOID = new OID("1.3.6.1.2.1.31.1.1.1.18");
+	private static final OID ifHCInOctetsOID = new OID(".1.3.6.1.2.1.31.1.1.1.6");
+	private static final OID ifHCOutOctetsOID = new OID(".1.3.6.1.2.1.31.1.1.1.10");
 
-	private final static OID STATUS_OIDS[] = new OID[] {
-			// sysUpTime[0]
-			new OID(".1.3.6.1.2.1.1.3"),
-			// sysDescr[1]
-			new OID(".1.3.6.1.2.1.1.1"),
-			// sysName[2]
-			new OID(".1.3.6.1.2.1.1.5"),
-			// sysLocation[3]
-			new OID(".1.3.6.1.2.1.1.6"),
-			// ifNumber[4]
-			new OID(".1.3.6.1.2.1.2.1"),
-			// -- IFTABLE --
-			// ifDescr[5]
-			new OID(".1.3.6.1.2.1.2.2.1.2"),
-			// ifAdminStatus[6]
-			new OID(".1.3.6.1.2.1.2.2.1.7"),
-			// ifOperStatus[7]
-			new OID(".1.3.6.1.2.1.2.2.1.8"),
-			// ifName[8]
-			new OID("1.3.6.1.2.1.31.1.1.1.1"),
-			// ifAlias[9]
-			new OID("1.3.6.1.2.1.31.1.1.1.18") };
+	private final static OID COUNTER_OIDS[] = new OID[] { sysUpTimeOID,
+			ifDescrOID, IfInOctetsOID, ifHCInOctetsOID, IfOutOctestOID,
+			ifHCOutOctetsOID, ifAdminStatusOID, ifOperStatusOID, ifNameOID,
+			ifAliasOID };
+
+	private final static OID STATUS_OIDS[] = new OID[] { sysUpTimeOID,
+			sysDescrOID, sysNameOID, sysLocationOID, ifNumberOID, ifDescrOID,
+			ifAdminStatusOID, ifOperStatusOID, ifNameOID, ifAliasOID };
 
 	private GaugeService gaugePollResponse;
 
@@ -87,7 +66,7 @@ public class SnmpService {
 		if (log.isDebugEnabled()) {
 			log.debug("source {}: poll status", source.getIpAddress());
 		}
-		
+
 		long startPollTime = System.currentTimeMillis();
 		List<TableEvent> events = getTable(source, STATUS_OIDS);
 
@@ -175,7 +154,7 @@ public class SnmpService {
 		}
 
 		long startPollTime = System.currentTimeMillis();
-		
+
 		// get ifTable
 		List<TableEvent> events = getTable(source, COUNTER_OIDS);
 
@@ -183,9 +162,10 @@ public class SnmpService {
 		long endPollTime = System.currentTimeMillis();
 		source.setPollTime(endPollTime);
 		source.setPollResponse((endPollTime - startPollTime));
-		
+
 		// update metric
-		gaugePollResponse.submit("gauge.poll.response." + source.getIpAddress(),
+		gaugePollResponse.submit(
+				"gauge.snmp.response." + source.getIpAddress(),
 				(double) (endPollTime - startPollTime));
 
 		// return if no events was received
@@ -203,7 +183,6 @@ public class SnmpService {
 			// update duration
 			source.setPollDuration(sysUptime - source.getSysUptime());
 		}
-
 		// update sysUptime
 		source.setSysUptime(sysUptime);
 
@@ -227,11 +206,7 @@ public class SnmpService {
 
 						// get ifEntry
 						String ifdescr = vb[1].getVariable().toString();
-						// get ifEntry
-						SnmpInterface ifEntry = source
-								.getSnmpInterface(ifdescr);
-						// add to pollIf
-						processedIF.add(ifdescr);
+						SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
 
 						updateIfEntry(ifEntry, event);
 
@@ -240,7 +215,7 @@ public class SnmpService {
 						SnmpCounter bytes_out = getCounterValue(vb[4], vb[5]);
 
 						// calculate delta counters
-						if (ifEntry.isUp() && !source.isSkipDelta()) {
+						if (!source.isSkipDelta() && ifEntry.isUp()) {
 							ifEntry.setPollInOctets(calcDeltaCounter(
 									source.getIpAddress(), ifdescr, bytes_in,
 									ifEntry.getIfInOctets()));
@@ -249,9 +224,12 @@ public class SnmpService {
 									ifEntry.getIfOutOctets()));
 						}
 
-						// update counter values
+						// save counter values
 						ifEntry.setIfInOctets(bytes_in);
 						ifEntry.setIfOutOctets(bytes_out);
+						
+						// add to processed list
+						processedIF.add(ifdescr);
 					});
 
 		// reset skipDelta
@@ -269,12 +247,18 @@ public class SnmpService {
 		List<String> toremove = source.getIftable().keySet().stream()
 				.filter(ifdescr -> !processedIF.contains(ifdescr))
 				.collect(Collectors.toList());
-		// remove not existing interfaces
+		// process not existing interfaces
 		if (toremove != null && !toremove.isEmpty()) {
 			for (String ifdescr : toremove) {
-				// source.removeSnmpInterace(ifdescr);
 				log.warn("source {}: not found in response ifdescr: {}",
 						source.getIpAddress(), ifdescr);
+				if (source.getSnmpInterface(ifdescr).isMarked()) {
+					source.removeSnmpInterace(ifdescr);
+					log.info("source {}: remove interface ifdescr: {}",
+							source.getIpAddress(), ifdescr);
+				} else {
+					source.getSnmpInterface(ifdescr).setMarked();
+				}
 			}
 		}
 	}

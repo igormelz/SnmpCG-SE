@@ -55,10 +55,10 @@
 		<table id="ifTable" class="table table-condensed">
           <thead>
             <tr>
-              <th></th>
               <th>ifIndex</th>
+               <th></th>
               <th>ifDescr</th>
-              <th>pollStatus</th>
+              <th>ifStatus</th>
               <th>in (MB/s)</th>
               <th>out (MB/s)</th>
             </tr>
@@ -130,7 +130,7 @@
         dataSrc: function(ifTable) {
           ifTable.forEach(function(ifEntry){
           	ifEntry.ifDescr += (ifEntry.ifAlias)?" ("+ifEntry.ifAlias+")":"";
-            ifEntry.pollStatus = (ifEntry.ifAdminStatus==1 && ifEntry.ifOperStatus==1)?"<span class=\"text-info\">up</span>":"<span class=\"text-danger\">down</span>";
+            ifEntry.pollStatus = (ifEntry.up)?"<span class=\"text-info\">up</span>":"<span class=\"text-danger\">down</span>";
             ifEntry.bytes_in = bandwith(ifEntry.pollInOctets);
             ifEntry.bytes_out = bandwith(ifEntry.pollOutOctets);
             //console.log(bandwith(ifEntry.pollOutOctets));
@@ -140,9 +140,9 @@
        },
        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
        columns: [
-       	{ "class":"detail","orderable":false,"data":null,
-          "defaultContent": "<span class=\"glyphicon glyphicon-collapse-down\" aria-hidden=\"true\"></span>"},
         { data:"ifIndex" },
+        { "class":"detail","orderable":false,"data":null,
+          "defaultContent": "<span class=\"glyphicon glyphicon-collapse-down\" aria-hidden=\"true\"></span>"},
        	{ data:"ifDescr" },
        	//{ data: "ifName" },
        	{ data: "pollStatus" },
@@ -158,7 +158,7 @@
 	}
 	
 	function format(d) {
-		return "<pre>ifAdminStatus="+d.ifAdminStatus+ifstatus(d.ifAdminStatus==1)
+		return "<pre>ifAdminStatus="+d.ifAdminStatus+ifstatus(d.ifAdminStatus)
 			+" ifOperStatus="+d.ifOperStatus+ifstatus(d.ifOperStatus)
 			+" pollInOctets="+d.pollInOctets
 			+" pollOutOctets="+d.pollOutOctets //Number.parseInt(d.pollOutOctets).toLocaleString('en-EN')
