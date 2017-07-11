@@ -82,7 +82,7 @@ public class SnmpCollectorApplication {
 					.produces("application/json")
 					
 					.get("/sources/").description("get list sources")
-					.param().name("status").description("filter by status").type(RestParamType.query).endParam()
+					.param().name("status").type(RestParamType.query).endParam()
 					.to("bean:sources?method=getSources")
 					
 					.get("/sources/{source}")
@@ -99,15 +99,19 @@ public class SnmpCollectorApplication {
 					.to("bean:sources?method=removeSource")
 					
 					.get("/sources/{source}/interfaces")
-					.param().name("polling").description("filter by polling status").type(RestParamType.query).endParam()
+					.param().name("trace").type(RestParamType.query).endParam()
+					.param().name("polling").type(RestParamType.query).endParam()
 					.to("bean:sources?method=getSourceInterfaces")
 					
 					.get("/sources/interfaces")
-					.to("bean:sources?method=getChargingInterfaces")
+					.to("bean:sources?method=getPollingInterfaces")
 					
-					//.put("/sources/{source}/interfaces/{ifDescr}")
-					//.to("bean:sources?method=updateInterface(${header.source},${header.ifDescr})")
+					.put("/sources/{source}/interfaces/{ifindex}")
+					.param().name("trace").type(RestParamType.query).endParam()
+					.param().name("polling").type(RestParamType.query).endParam()
+					.to("bean:sources?method=updateSourceInterface")
 					;
+			
 
 			// add new source 
 			from("direct:addSource")

@@ -31,7 +31,7 @@
         <!-- nav links -->
         <ul class="nav navbar-nav">
           <li><a href="index.html">Sources</a></li>
-          <li class="active"><a href="charging.html">ChargeIF</a></li>
+          <li class="active"><a href="counters.html">Counters</a></li>
         </ul>
       </div>
       <!-- /.container -->
@@ -40,7 +40,8 @@
     <!-- page content -->
     <div class="container">
 		<div class="row">
-        		<h2>Charging Interfaces</h2>
+        	<h2>Interface pollData Counters</h2>
+        	<h5>last poll @ <span id="updated"></span></h5>
         </div>
         <div class="row">
         <table id="tbl_data" class="table table-condensed">
@@ -48,8 +49,10 @@
             <tr>
               <th>Source</th>
               <th>ifDescr</th>
-              <th>in (MB/s)</th>
-              <th>out (MB/s)</th>
+              <th>In MB</th>
+              <th>In Mbit/s</th>
+              <th>Out MB</th>
+              <th>Out Mbis/s</th>
             </tr>
           </thead>
           <tbody>
@@ -59,17 +62,18 @@
     </div>
     <!-- /.container -->
 
-    <!-- jQuery (necessary for Flat UI's JavaScript plugins) -->
     <script src="js/vendor/jquery.min.js"></script>
-    <script src="js/datatables.min.js"></script>
+    <script src="js/vendor/bootstrap.min.js"></script>
+    <script src="js/vendor/datatables.min.js"></script>
     <!-- script src="js/jquery.dataTables.min.js"></script -->
-    <script src="js/dataTables.bootstrap.min.js"></script>
+    <script src="js/vendor/dataTables.bootstrap.min.js"></script>
     <script src="js/script.js"></script>
     <script>   
 	var table = $('#tbl_data').DataTable({
        ajax: {
         url: "/api/v1/sources/interfaces",
         dataSrc: function(ifTable) {
+          var lastPoll = 0;
           ifTable.forEach(function(ifEntry){
           	var source = "<a href=\"view.html?ip="+ifEntry.Ip+"\">";
           	if (ifEntry.sysName) {
@@ -79,21 +83,29 @@
             }
             ifEntry.Ip = source;
           	ifEntry.ifdescr += (ifEntry.ifalias)?" ("+ifEntry.ifalias+")":"";
-            ifEntry.bytes_in = bandwith(ifEntry.pollInOctets);
-            ifEntry.bytes_out = bandwith(ifEntry.pollOutOctets);
-            //console.log();
+          	ifEntry.ifdescr += (ifEntry.trace)?" <span class=\"label label-info small\">trace</span>":"";
+          	ifEntry.rate_in = bandwith(ifEntry.pollInOctets);
+            ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets,'MB');
+            ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets,'MB');
+            ifEntry.rate_out = bandwith(ifEntry.pollOutOctets);
+            //ifEntry.actionTrace="<span class=\"label label-"+(ifEntry.trace?"info":"default")+" small\">trace</span>";
+            if (lastPoll < ifEntry.pollTime) { lastPoll = ifEntry.pollTime };
           });
+          $("#updated").text(new Date(lastPoll).toLocaleString());
           return ifTable;
         }
        },
        lengthMenu: [[30, 50, 100, -1], [30, 50, 100, "All"]],
        columns: [
+        //{ data: "actionTrace","orderable":false },
         { data: "Ip" },
         { data: "ifdescr" },
         { data: "bytes_in" },
-        { data: "bytes_out" }
+        { data: "rate_in" },
+        { data: "bytes_out" },
+        { data: "rate_out" }
        ],
-       "order": [[3, 'desc']]
+       "order": [[4, 'desc']]
     });      
     </script>
   </body>

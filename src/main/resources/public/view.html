@@ -28,39 +28,78 @@
         </div>
         <ul class="nav navbar-nav">
           <li><a href="index.html">Sources</a></li>
-          <li><a href="charging.html">ChargeIF</a></li>
+          <li><a href="counters.html">Counters</a></li>
         </ul>
-        <button id="removeBtn" type="button" class="btn btn-primary navbar-btn navbar-right" onclick="delSource()">Remove</button>
+        <button id="removeBtn" type="button" class="btn btn-default navbar-btn navbar-right" data-toggle="modal" data-target="#myModal">Remove</button>
+             <!-- Modal -->
+		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  			<div class="modal-dialog" role="document">
+    			<div class="modal-content">
+      				<div class="modal-header">
+        				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        				<h4 class="modal-title" id="myModalLabel">Remove source from SnmpCG</h4>
+      				</div>
+      				<form>
+      			<div class="modal-body">
+					<span>Are you sure to remove source <strong><span id="ip"></span></strong>?</span>
+     			</div>
+      			<div class="modal-footer">
+      				<button type="button" class="btn btn-default" data-dismiss="modal">No, return</button>
+        			<button class="btn btn-danger" type="submit" data-dismiss="modal" onclick="delSource()">Yes, remove</button> 
+      			</div>
+      			</form>
+    			</div>
+  			</div>
+		</div> 
       </div>
     </nav>
     <!-- page content -->
     <div class="container">
-        	<h2>Source <span id="address"></span></h2>
-			<h5>last poll @ <span id="updated"></span></h5>
-		<div class="panel panel-default">
-  			<div class="panel-heading"><span id="status" class="label"></span> <span id="sysName"></span></div>
+        <div id="responseMsg" class="alert alert-info alert-dismissible hidden" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <span id="responseBody"></span>
+        </div>
+	    <div class="row">
+  			<h3><span id="sysName"></span> [<span id="address"></span>]</h3>
+  		<div class="panel panel-default">
+  			<div class="panel-heading">
+  				<span id="status" class="label"></span> <em>last poll @ <span id="updated"></span></em>
+  			</div>
   			<div class="panel-body">
-    			<span id="sysDescr" class="small"></span>
+  				<span id="sysDescr" class="small"></span>
   			</div>
 			<ul class="list-group">
-				<li class="list-group-item small"><label>Uptime:</label><span id="sysUptime"></span></li>
-				<li class="list-group-item">
-				<div class="btn-group-sm" data-toggle="buttons">
-        		<btn type="radio" class="btn btn-default" id="ifAll">ifNumber: <span id="ifNumber" class="badge info"></span></btn>
-        		<btn type="radio" class="btn btn-success" id="ifUp">ifNumberUp <span id="pollUp" class="badge info">0</span></btn>
-        		<btn type="radio" class="btn btn-warning" id="ifDown">ifNumberDown <span id="pollDown" class="badge info">0</span></btn>
+				<li class="list-group-item small"><label>Uptime: </label><span id="sysUptime"></span></li>
+				<li class="list-group-item small"><label>Action: </label>
+				<div class="btn-group btn-group-sm" role="group" aria-label="Action">
+        	    <button type="button" class="btn btn-default" id="traceAllOn"><span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> trace On</button>
+        		<button type="button" class="btn btn-default" id="traceAllOff"><span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> trace Off</button>       	
+        		<div class="btn-group btn-group-sm" role="group" aria-label="Action">	
+        		<button type="button" class="btn btn-default" id="pollAllOn"><span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> pollData On</button>
+        		<button type="button" class="btn btn-default" id="pollAllOff"><span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> pollData Off</button>
         		</div>
+        		</div>
+				</li>
+				<li class="list-group-item small"><label>Filter: </label>
+				<div class="btn-group btn-group-sm" role="group" aria-label="View">
+        		<button type="button" class="btn btn-default" id="ifAll"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> ifNumber <span id="ifNumber" class="badge"></span></button>
+        		<button type="button" class="btn btn-success" id="ifPolled"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> Poll Data <span id="pollCount" class="badge">0</span></button>
+        		<button type="button" class="btn btn-info" id="ifTraced"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> Trace <span id="traceCount" class="badge">0</span></button>
+        		</div>				
         	</ul>
 		</div>
+		</div>		
 		<table id="ifTable" class="table table-condensed">
           <thead>
             <tr>
-              <th>ifIndex</th>
-               <th></th>
+              <th></th>
               <th>ifDescr</th>
-              <th>ifStatus</th>
-              <th>in (MB/s)</th>
-              <th>out (MB/s)</th>
+              <th>ifIndex</th>
+              <th>Status</th>
+              <th>poll In MB</th>
+              <th>poll In Mbit/s</th>
+              <th>poll Out MB</th>
+              <th>poll Out Mbis/s</th>
             </tr>
           </thead>
           <tbody>
@@ -70,16 +109,16 @@
     </div>
     <!-- /.container -->
 
-    <!-- jQuery (necessary for Flat UI's JavaScript plugins) -->
     <script src="js/vendor/jquery.min.js"></script>
-    <!-- Include all compiled plugins (below), or include individual files as needed -->
-    <script src="js/datatables.min.js"></script>
+    <script src="js/vendor/bootstrap.min.js"></script>
+    <script src="js/vendor/datatables.min.js"></script>
     <!-- script src="js/jquery.dataTables.min.js"></script -->
-    <script src="js/dataTables.bootstrap.min.js"></script>
+    <script src="js/vendor/dataTables.bootstrap.min.js"></script>
     <script src="js/script.js"></script>
     <script>
 
     var ip = getUrlParameter("ip");
+    $("#ip").text(ip);
     $("#address").text(ip);
     $("#removeBtn").text("Remove "+ip);
     
@@ -93,6 +132,7 @@
 		});
     }
     
+    function getSourceInfo() {
     $.ajax({
     	url: "/api/v1/sources/"+ip,
     	success: function(source){
@@ -116,12 +156,15 @@
             		$("#ifNumber").text(source.ifNumber);
             		$("#sysUptime").text(uptime(source.sysUptime));
             		$("#sysDescr").text(source.sysDescr);
-            		$("#pollUp").text(source.pollStatusUp);
-            		$("#pollDown").text(source.pollStatusDown);
+            		$("#stateUp").text(source.stateUpCounter);
+            		$("#stateDown").text(source.stateDownCounter);
+            		$("#pollCount").text(source.pollingCounter);
+            		$("#traceCount").text(source.traceCounter);
             	}
             }
          }
     });
+    }
     
  	var dt = $('#ifTable').DataTable({
        ajax: {
@@ -129,25 +172,30 @@
         //dataSrc: '' 
         dataSrc: function(ifTable) {
           ifTable.forEach(function(ifEntry){
+            var actionPoll="<a class=\"label label-"+(ifEntry.polling?"success":"default")+" small\" onclick=\"updateIf("+ifEntry.ifIndex+","+(ifEntry.polling?"'poll=off'":"'poll=on'")+")\">pollData</a> ";
+            var actionTrace="<a class=\"label label-"+(ifEntry.trace?"info":"default")+" small\" onclick=\"updateIf("+ifEntry.ifIndex+","+(ifEntry.trace?"'trace=off'":"'trace=on'")+")\">trace</a> ";
+          	ifEntry.ifDescr = actionPoll + actionTrace + ifEntry.ifDescr;
           	ifEntry.ifDescr += (ifEntry.ifAlias)?" ("+ifEntry.ifAlias+")":"";
-            ifEntry.pollStatus = (ifEntry.up)?"<span class=\"text-info\">up</span>":"<span class=\"text-danger\">down</span>";
-            ifEntry.bytes_in = bandwith(ifEntry.pollInOctets);
-            ifEntry.bytes_out = bandwith(ifEntry.pollOutOctets);
-            //console.log(bandwith(ifEntry.pollOutOctets));
+            ifEntry.state = (ifEntry.up)?"<span class=\"text-info\">up</span>":"<span class=\"text-danger\">down</span>";
+            ifEntry.rate_in = bandwith(ifEntry.pollInOctets);
+            ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets,'MB');
+            ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets,'MB');
+            ifEntry.rate_out = bandwith(ifEntry.pollOutOctets);
           });
           return ifTable;
         }
        },
        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
        columns: [
-        { data:"ifIndex" },
         { "class":"detail","orderable":false,"data":null,
-          "defaultContent": "<span class=\"glyphicon glyphicon-collapse-down\" aria-hidden=\"true\"></span>"},
+          "defaultContent": "<span class=\"glyphicon glyphicon-zoom-in\" aria-hidden=\"true\"></span>"},
        	{ data:"ifDescr" },
-       	//{ data: "ifName" },
-       	{ data: "pollStatus" },
-       	{ data: "bytes_in" },
-       	{ data: "bytes_out" }
+       	{ data:"ifIndex" },
+       	{ data: "state" },
+        { data: "bytes_in" },
+        { data: "rate_in" },
+        { data: "bytes_out" },
+        { data: "rate_out" }
        ],
        "order": [[5, 'desc']]
     });
@@ -158,13 +206,13 @@
 	}
 	
 	function format(d) {
-		return "<pre>ifAdminStatus="+d.ifAdminStatus+ifstatus(d.ifAdminStatus)
+		return "<span class=\"small\">"
+			+" ifName=<b>"+d.ifName+"</b>"
+			+" ifAdminStatus="+d.ifAdminStatus+ifstatus(d.ifAdminStatus)
 			+" ifOperStatus="+d.ifOperStatus+ifstatus(d.ifOperStatus)
-			+" pollInOctets="+d.pollInOctets
-			+" pollOutOctets="+d.pollOutOctets //Number.parseInt(d.pollOutOctets).toLocaleString('en-EN')
-			//+" ifInOctets=<b>"+d.ifInOctets.value+"</b> type="+d.ifInOctets.type
-			//+" ifOutOctets=<b>"+d.ifOutOctets.value+"</b> type="+d.ifOutOctets.type
-			+"</pre>";
+			+" ifInOctets["+d.ifInOctets.type+"]="+d.ifInOctets.value 
+			+" ifOutOctets["+d.ifOutOctets.type+"]="+d.ifOutOctets.value
+			+"</span>";
 	}
 	
 	// Array to track the ids of the details displayed rows
@@ -176,14 +224,14 @@
         var row = dt.row( tr );
         var idx = $.inArray( tr.attr('id'), detailRows );
         if ( row.child.isShown() ) {
-        	btn.removeClass('glyphicon-collapse-up');
-        	btn.addClass('glyphicon-collapse-down');
+        	btn.removeClass('glyphicon-zoom-out');
+        	btn.addClass('glyphicon-zoom-in');
             row.child.hide();
             // Remove from the 'open' array
             detailRows.splice( idx, 1 );
         } else {
-       		btn.removeClass('glyphicon-collapse-down');
-        	btn.addClass('glyphicon-collapse-up');
+       		btn.removeClass('glyphicon-zoom-in');
+        	btn.addClass('glyphicon-zoom-out');
         	row.child( format( row.data() ) ).show();
  
             // Add to the 'open' array
@@ -193,15 +241,65 @@
         }
     } );
     
-    $('#ifUp').on('click', function () {
-        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?pollStatus=up" ).load();  
+    $('#ifPolled').on('click', function () {
+        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?polling=on" ).load();  
     });
-    $('#ifDown').on('click', function () {
-        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?pollStatus=down" ).load();  
+    $('#ifTraced').on('click', function () {
+        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?trace=on" ).load();  
     });
     $('#ifAll').on('click', function () {
         dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces" ).load();  
     });
+    
+    
+    $('#traceAllOn').on('click', function () {
+    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
+    			//console.log("trace idx"+idx);
+    			updateIf(idx, "trace=on");
+    		});
+    });
+    
+   $('#traceAllOff').on('click', function () {
+    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
+    			//console.log("trace idx"+idx);
+    			updateIf(idx, "trace=off");
+    		});
+    });
+    
+   $('#pollAllOn').on('click', function () {
+    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
+    			//console.log("trace idx"+idx);
+    			updateIf(idx, "poll=on");
+    		});
+    });
+    
+   $('#pollAllOff').on('click', function () {
+    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
+    			//console.log("trace idx"+idx);
+    			updateIf(idx, "poll=off");
+    		});
+    });
+    
+    
+   function showNotif(message) {
+        $('#responseBody').text(message.Status);
+        $('#responseMsg').removeClass('hidden');
+        setTimeout(function(){ $('#responseMsg').addClass('hidden'); }, 1000);
+    }  
+    
+    function updateIf(idx,action) {
+    	console.log("update index: "+idx+" action: "+action);
+    	    	$.ajax({
+    		url: "/api/v1/sources/"+ip+"/interfaces/"+idx+"?"+action,
+    		type: "PUT",
+    		success: function(result) {
+    			dt.ajax.reload();
+    			getSourceInfo();
+    			showNotif(result);
+    		}
+		});
+    }
+    getSourceInfo();
     
     </script>
   </body>

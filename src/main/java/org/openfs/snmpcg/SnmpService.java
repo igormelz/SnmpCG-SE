@@ -19,6 +19,7 @@ import org.openfs.snmpcg.model.SnmpInterface;
 import org.openfs.snmpcg.model.SnmpSource;
 import org.openfs.snmpcg.model.SnmpSourceStatus;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -55,10 +56,13 @@ public class SnmpService {
 			ifAdminStatusOID, ifOperStatusOID, ifNameOID, ifAliasOID };
 
 	private GaugeService gaugePollResponse;
-
+	private Snmp snmp;
+	
 	@Autowired
-	public SnmpService(GaugeService gaugeService) {
+	public SnmpService(GaugeService gaugeService) throws IOException {
 		this.gaugePollResponse = gaugeService;
+		snmp = new Snmp(new DefaultUdpTransportMapping());
+		snmp.listen();
 	}
 
 	@Handler
@@ -85,15 +89,7 @@ public class SnmpService {
 
 		// process sysUpTime
 		String uptime = vbs[0].getVariable().toString();
-		long sysUptime = events.get(0).getColumns()[0].getVariable().toLong();
-
-		if (source.getSysUptime() != 0 && source.getSysUptime() > sysUptime) {
-			log.warn("source {}: was rebooted. Reset all counter",
-					source.getIpAddress());
-			// reset Counters and skip calcDelta on next poll
-			source.resetSnmpInterfaceCounters();
-			source.setSkipDelta(true);
-		}
+		validateSkipDelta(source, vbs[0].getVariable().toLong());
 		source.setSysUptime(vbs[0].getVariable().toLong());
 
 		// update system info
@@ -108,7 +104,6 @@ public class SnmpService {
 			source.setStatus(SnmpSourceStatus.NO_IFTABLE);
 			return;
 		}
-		int ifNumber = vbs[4].getVariable().toInt();
 
 		// set success status
 		source.setStatus(SnmpSourceStatus.SUCCESS);
@@ -143,8 +138,8 @@ public class SnmpService {
 							updateIfEntry(ifEntry, event);
 
 						});
-		log.info("source {}: SUCCESS, uptime:{}, ifNumber:{}[{}]",
-				source.getIpAddress(), uptime, events.size() - 1, ifNumber);
+		log.info("source {}: SUCCESS, uptime:{}, ifNumber:{}",
+				source.getIpAddress(), uptime, events.size() - 1);
 	}
 
 	@Handler
@@ -174,16 +169,9 @@ public class SnmpService {
 
 		// process sysUpTime
 		long sysUptime = events.get(0).getColumns()[0].getVariable().toLong();
-		if (source.getSysUptime() > sysUptime) {
-			log.warn("source {}: was rebooted between pool. Reset all counter",
-					source.getIpAddress());
-			source.resetSnmpInterfaceCounters();
-			source.setSkipDelta(true);
-		} else {
-			// update duration
+		if (!validateSkipDelta(source,sysUptime)) {
 			source.setPollDuration(sysUptime - source.getSysUptime());
 		}
-		// update sysUptime
 		source.setSysUptime(sysUptime);
 
 		// keep poll ifTable
@@ -209,13 +197,13 @@ public class SnmpService {
 						SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
 
 						updateIfEntry(ifEntry, event);
-
+							
 						// get ifInOctets, ifOutOctets
 						SnmpCounter bytes_in = getCounterValue(vb[2], vb[3]);
 						SnmpCounter bytes_out = getCounterValue(vb[4], vb[5]);
-
+							
 						// calculate delta counters
-						if (!source.isSkipDelta() && ifEntry.isUp()) {
+						if (!source.isSkipDelta() && ifEntry.isPolling()) {
 							ifEntry.setPollInOctets(calcDeltaCounter(
 									source.getIpAddress(), ifdescr, bytes_in,
 									ifEntry.getIfInOctets()));
@@ -223,7 +211,7 @@ public class SnmpService {
 									source.getIpAddress(), ifdescr, bytes_out,
 									ifEntry.getIfOutOctets()));
 						}
-
+							
 						// save counter values
 						ifEntry.setIfInOctets(bytes_in);
 						ifEntry.setIfOutOctets(bytes_out);
@@ -265,14 +253,10 @@ public class SnmpService {
 
 	private List<TableEvent> getTable(SnmpSource source, OID[] oids)
 			throws Exception {
-		Snmp snmp = new Snmp(new DefaultUdpTransportMapping());
-		snmp.listen();
 
 		TableUtils tUtils = new TableUtils(snmp, new DefaultPDUFactory());
 		List<TableEvent> events = tUtils.getTable(source.getTarget(), oids,
 				null, null);
-
-		snmp.close();
 
 		// validate timeout
 		if (events.size() == 1 && events.get(0).isError()) {
@@ -362,6 +346,12 @@ public class SnmpService {
 			ifEntry.setIfOperStatus(event.getColumns()[7].getVariable().toInt());
 		}
 
+		// update polling status 
+		if (ifEntry.isDown()) {
+			// set polling off for down interface
+			ifEntry.setPolling(false);
+		}
+		
 		// update ifName
 		if (event.getColumns()[8] != null && ifEntry.getIfName() == null) {
 			ifEntry.setIfName(event.getColumns()[8].getVariable().toString());
@@ -371,6 +361,16 @@ public class SnmpService {
 		if (event.getColumns()[9] != null && ifEntry.getIfAlias() == null) {
 			ifEntry.setIfAlias(event.getColumns()[9].getVariable().toString());
 		}
-
+	}
+	
+	private boolean validateSkipDelta(SnmpSource source, long sysUptime) {
+		if (source.getSysUptime() != 0 && source.getSysUptime() > sysUptime) {
+			log.warn("source {}: was rebooted. Reset all counter", source.getIpAddress());
+			// reset Counters and skip calcDelta on next poll
+			source.resetSnmpInterfaceCounters();
+			source.setSkipDelta(true);
+			return true;
+		}
+		return false;
 	}
 }

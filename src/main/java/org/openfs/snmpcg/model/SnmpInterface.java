@@ -11,7 +11,7 @@ public final class SnmpInterface implements Serializable {
 	private int ifAdminStatus;
 	private int ifOperStatus;
 	private boolean polling = true;
-	private boolean trace = true;
+	private boolean trace = false;
 	private SnmpCounter ifInOctets = new SnmpCounter();
 	private SnmpCounter ifOutOctets = new SnmpCounter();
 	private long pollInOctets;
@@ -133,6 +133,10 @@ public final class SnmpInterface implements Serializable {
 		return ifAdminStatus == 1 && ifOperStatus == 1;
 	}
 
+	public boolean isDown() {
+		return !isUp();
+	}
+	
 	public boolean isMarked() {
 		return marked;
 	}

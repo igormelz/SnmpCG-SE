@@ -31,17 +31,42 @@
         <!-- nav links -->
         <ul class="nav navbar-nav">
           <li class="active"><a href="index.html">Sources</a></li>
-          <li><a href="charging.html">ChargeIF</a></li>
+          <li><a href="counters.html">Counters</a></li>
         </ul>
-        <form class="navbar-form navbar-right">
-					<div class="form-group">
+        <button type="button" class="btn btn-default navbar-btn navbar-right" data-toggle="modal" data-target="#myModal">Add Source</button>
+        <!-- Modal -->
+		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  			<div class="modal-dialog" role="document">
+    			<div class="modal-content">
+      				<div class="modal-header">
+        				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        				<h4 class="modal-title" id="myModalLabel">Add new source to SnmpCG</h4>
+      				</div>
+      				<form>
+      			<div class="modal-body">
+      				<label for="new_source">Source ip addr(*)</label>
+ 					<div class="form-group">
 						<input id="new_source" type="text" class="form-control" placeholder="0.0.0.0" aria-describedby="basic-addon1">
+						<footer>*Required</footer>
 					</div>
+					<label for="community">Snmp community string</label>
 					<div class="form-group">
 						<input id="community" type="text" class="form-control" placeholder="community-string" aria-describedby="basic-addon1">
+						<footer>Note: leave empty if use system default community string</footer>
 					</div>
-					<button class="btn btn-primary" type="submit" onclick="addSource()">Add source</button>  
-        </form>
+					<div class="form-group">
+						<input id="descr" type="text" class="form-control" placeholder="description" aria-describedby="basic-addon1">
+						<footer>Note: add some description to source</footer>
+					</div>
+     			</div>
+      			<div class="modal-footer">
+      				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        			<button class="btn btn-primary" type="submit" data-dismiss="modal" onclick="addSource()">Add source</button> 
+      			</div>
+      			</form>
+    			</div>
+  			</div>
+		</div> 
       </div>
       <!-- /.container -->
     </nav>
@@ -55,29 +80,14 @@
         	</div>
         </div>
 		<div class="row">
-        		<h2>Sources</h2>
-        </div>
-		<div class="row">
-		    	<div class="btn-group-sm" data-toggle="buttons">
-          			<button type="radio" id="filter_all" class="btn btn-info active">
-          				ALL <span id="allVal" class="badge info">0</span>
-          			</button>
-          			<button type="radio" id="filter_success" class="btn btn-success" type="button">
-            			SUCCESS <span id="successVal" class="badge info">0</span>
-          			</button>
-          			<button  type="radio" id="filter_timeout" class="btn btn-danger">
-            			TIMEOUT <span id="timeoutVal" class="badge">0</span>
-          			</button>
-          			<button  type="radio" id="filter_nopdu" class="btn btn-warning">
-            			NO PDU <span id="nopduVal" class="badge">0</span>
-          			</button>
-          			<button  type="radio" id="filter_noif" class="btn btn-warning">
-            			NO IFTABLE <span id="noifVal" class="badge">0</span>
-          			</button>
-          			<button  type="radio" id="filter_unknown" class="btn btn-default">
-            			UNKNOWN <span id="unknownVal" class="badge">0</span>
-          			</button>
-		   		</div>
+		    <div class="btn-group-sm" data-toggle="buttons">
+          	<button type="radio" id="filter_all" class="btn btn-info active"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> ALL <span id="allVal" class="badge"></span></button>
+          	<button type="radio" id="filter_success" class="btn btn-success"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> SUCCESS <span id="successVal" class="badge"></span></button>
+          	<button type="radio" id="filter_timeout" class="btn btn-danger"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> TIMEOUT <span id="timeoutVal" class="badge"></span></button>
+          	<button type="radio" id="filter_nopdu" class="btn btn-warning"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> NO PDU <span id="nopduVal" class="badge"></span></button>
+          	<button type="radio" id="filter_noif" class="btn btn-warning"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> NO IFTABLE <span id="noifVal" class="badge"></span></button>
+          	<button  type="radio" id="filter_unknown" class="btn btn-default"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> UNKNOWN <span id="unknownVal" class="badge"></span></button>
+			</div>
 		</div>
         <div class="row">
         <p/>
@@ -86,6 +96,7 @@
             <tr>
               <th>Source</th>
               <th>ifNumber</th>
+              <th>polling #</th>
               <th>poll timestamp</th>
               <th>poll response (ms)</th>
             </tr>
@@ -97,22 +108,23 @@
     </div>
     <!-- /.container -->
 
-    <!-- jQuery (necessary for Flat UI's JavaScript plugins) -->
     <script src="js/vendor/jquery.min.js"></script>
-    <script src="js/datatables.min.js"></script>
+    <script src="js/vendor/bootstrap.min.js"></script>
+    <script src="js/vendor/datatables.min.js"></script>
     <!-- script src="js/jquery.dataTables.min.js"></script -->
-    <script src="js/dataTables.bootstrap.min.js"></script>
+    <script src="js/vendor/dataTables.bootstrap.min.js"></script>
     <script src="js/script.js"></script>
     <script>
 
       function showNotif(message) {
         $('#source_add').text(message.Status);
         $('#source_add').removeClass('hidden');
-        setTimeout(function(){ $('#source_add').addClass('hidden'); }, 5000);
-        fillSourses("");
+        setTimeout(function(){ $('#source_add').addClass('hidden'); }, 3000);
+        fillCounter();
+        table.ajax.reload();
         //clear input 
-        $('#new_source').val('');
-        $('#community').val('');
+        //$('#new_source').val('');
+        //$('#community').val('');
       }
 
       function addSource() {
@@ -199,6 +211,7 @@
        columns: [
         { data: "Ip" },
         { data: "ifNumber" },
+        { data: "pollingCounter" },
         { data: "pollTime" },
         { data: "pollResponse" }
        ]

@@ -1,15 +1,40 @@
     
     
+    // fmtbytes 
+    function fmtBytes(bytes,fmt) {
+    if (fmt == null) {
+    	if (bytes > 1000*1000*1000) {
+    		return (bytes / (1000*1000*1000)).toFixed(1)+' GB';
+    	} else if (bytes > 1000*1000) {
+    		return (bytes / (1000*1000)).toFixed(1)+' MB';
+    	} else if (bytes > 1000) {
+    		return (bytes / 1000).toFixed(1)+' kB';
+    	}
+    	return bytes + ' B';
+    } else {
+    	switch(fmt){
+    	case 'MB': 
+    		return (bytes / (1000*1000)).toFixed(1);
+    	case 'GB':
+    		return (bytes / (1000*1000*1000)).toFixed(1);
+    	case 'kB':
+    		return (bytes / 1000).toFixed(1);
+    	default:
+    		return bytes;
+    	}
+    }
+    }
+    
     // calcRate 
     function bandwith(bytes) {
     	var bps = (Number.parseInt(bytes) * 8) / 300;
     	/*
     	if (bps > 1000*1000*1000) {
-    		return (bps/(1000*1000*1000)).toFixed(1)+" GB/s";
+    		return (bps/(1000*1000*1000)).toFixed(1)+" Gbit/s";
     	} else if (bps > 1000*1000) {
-    		return (bps/(1000*1000)).toFixed(1)+" MB/s";
+    		return (bps/(1000*1000)).toFixed(1)+" Mbit/s";
     	} else if (bps > 1000) {
-    		return (bps/(1000)).toFixed(1)+" KB/s";
+    		return (bps/(1000)).toFixed(1)+" kbit/s";
     	}
     	return (bps).toFixed(1);
     	*/

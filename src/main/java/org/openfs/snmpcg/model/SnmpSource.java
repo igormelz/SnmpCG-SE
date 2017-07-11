@@ -65,7 +65,6 @@ public final class SnmpSource implements Serializable {
 
 	public List<SnmpInterface> getInterfaces() {
 		return iftable.values().stream()
-				.filter(e -> e.isPolling())
 				.collect(Collectors.toList());
 	}
 

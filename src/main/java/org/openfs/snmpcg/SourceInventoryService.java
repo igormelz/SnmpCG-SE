@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -41,8 +42,7 @@ import org.openfs.snmpcg.model.SnmpSourceStatus;
 @Service("sources")
 public class SourceInventoryService {
 
-	private static final Logger log = LoggerFactory
-			.getLogger(SourceInventoryService.class);
+	private static final Logger log = LoggerFactory.getLogger(SourceInventoryService.class);
 
 	@Value("${snmpcg.snmp.community:public}")
 	private String community;
@@ -161,12 +161,8 @@ public class SourceInventoryService {
 			}
 
 			if ("stats".equalsIgnoreCase(queryString)) {
-				Map<SnmpSourceStatus, Long> stats = sources
-						.values()
-						.stream()
-						.collect(
-								Collectors.groupingBy(SnmpSource::getStatus,
-										Collectors.counting()));
+				Map<SnmpSourceStatus, Long> stats = sources.values().stream()
+						.collect(Collectors.groupingBy(SnmpSource::getStatus, Collectors.counting()));
 				exchange.getIn().setBody(stats);
 				return;
 			}
@@ -188,32 +184,35 @@ public class SourceInventoryService {
 		map.put("snmpCommunity", source.getTarget().getCommunity().toString());
 		map.put("ifNumber", source.getIftable().size());
 		map.put("pollTime", source.getPollTime());
-		long counter_up = source.getInterfaces().stream()
-				.filter(SnmpInterface::isUp).count();
-		map.put("pollStatusUp", counter_up);
-		map.put("pollStatusDown", source.getIftable().size() - counter_up);
+//		long counter_up = source.getInterfaces().stream().filter(SnmpInterface::isUp).count();
+//		map.put("stateUpCounter", counter_up);
+//		map.put("stateDownCounter", source.getIftable().size() - counter_up);
+		map.put("pollingCounter",source.getInterfaces().stream().filter(SnmpInterface::isPolling).count());
+		map.put("traceCounter",source.getInterfaces().stream().filter(SnmpInterface::isTrace).count());
 		map.put("pollResponse", source.getPollResponse());
 		return map;
 	};
 
 	@Handler
-	public void getChargingInterfaces(Exchange exchange) {
-		exchange.getIn().setBody(sources.values().stream().map(mapChargingData).flatMap(List::stream)
+	public void getPollingInterfaces(Exchange exchange) {
+		exchange.getIn().setBody(sources.values().stream().map(mapInterface).flatMap(List::stream)
 				.collect(Collectors.toList()));
 	}
 
-	Function<SnmpSource, List<Map<String, Object>>> mapChargingData = source -> {
+	Function<SnmpSource, List<Map<String, Object>>> mapInterface = source -> {
 		List<Map<String, Object>> answer = source.getInterfaces()
 				.stream()
-				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1
-						&& e.getIfOperStatus() == 1)
+				.filter(e -> e.isPolling())
 				.map(e -> {
 					Map<String, Object> iface = new HashMap<String, Object>();
 					iface.put("Ip", source.getIpAddress());
 					iface.put("sysName", source.getSysName());
+					iface.put("pollTime", source.getPollTime());
 					iface.put("ifindex", e.getIfIndex());
 					iface.put("ifdescr", e.getIfDescr());
 					iface.put("ifalias", e.getIfAlias());
+					iface.put("polling", e.isPolling());
+					iface.put("trace", e.isTrace());
 					iface.put("pollInOctets", e.getPollInOctets());
 					iface.put("pollOutOctets", e.getPollOutOctets());
 					return iface;			
@@ -232,29 +231,28 @@ public class SourceInventoryService {
 			return;
 		}
 
-		// process query parameter status
-		String status = exchange.getIn().getHeader("pollStatus", String.class);
-		if (status != null) {
-			if ("up".equalsIgnoreCase(status)) {
-				exchange.getIn().setBody(
-						sources.get(source)
-								.getInterfaces()
-								.stream()
-								.filter(e -> e.getIfAdminStatus() == 1
-										&& e.getIfOperStatus() == 1)
-								.collect(Collectors.toList()));
+		List<SnmpInterface> ifTable = sources.get(source).getInterfaces();
+		// filter polling on (off)
+		String filter = exchange.getIn().getHeader("polling", String.class);
+		if (filter != null) {
+			if ("on".equalsIgnoreCase(filter)) {
+				exchange.getIn().setBody(ifTable.stream().filter(i->i.isPolling()).collect(Collectors.toList()));
 			} else {
-				exchange.getIn().setBody(
-						sources.get(source)
-								.getInterfaces()
-								.stream()
-								.filter(e -> (e.getIfAdminStatus() != 1 || e
-										.getIfOperStatus() != 1))
-								.collect(Collectors.toList()));
+				exchange.getIn().setBody(ifTable.stream().filter(i->!i.isPolling()).collect(Collectors.toList()));
 			}
 			return;
 		}
-		exchange.getIn().setBody(sources.get(source).getInterfaces());
+		// filter trace=on (off)
+		filter = exchange.getIn().getHeader("trace", String.class);
+		if (filter != null) {
+			if ("on".equalsIgnoreCase(filter)) {
+				exchange.getIn().setBody(ifTable.stream().filter(i->i.isTrace()).collect(Collectors.toList()));
+			} else {
+				exchange.getIn().setBody(ifTable.stream().filter(i->!i.isTrace()).collect(Collectors.toList()));
+			}
+			return;
+		}
+		exchange.getIn().setBody(ifTable);
 	}
 
 	Function<SnmpSource, String> formatTraceRecord = source -> {
@@ -286,7 +284,7 @@ public class SourceInventoryService {
 		return source.getInterfaces()
 				.stream()
 				// print polling and interface is up
-				.filter(SnmpInterface::isUp)
+				.filter(e -> e.isPolling())
 				.map(e -> {
 					StringBuilder sb = new StringBuilder();
 					sb.append(source.getIpAddress()).append(fieldSeparator);
@@ -330,8 +328,7 @@ public class SourceInventoryService {
 		source.getIftable()
 				.values()
 				.stream()
-				.filter(e -> e.isPolling() && e.getIfAdminStatus() == 1
-						&& e.getIfOperStatus() == 1).forEach(e -> {
+				.filter(e -> e.isPolling()).forEach(e -> {
 					answer.add(e.getIfIndex());
 					answer.add(e.getIfDescr());
 					answer.add(e.getIfName());
@@ -369,7 +366,56 @@ public class SourceInventoryService {
 		}
 		return mapSource.apply(sources.get(sourceIpAddr));
 	}
-
+	
+	@Handler
+	public void updateSourceInterface(Exchange exchange) { 
+		String sourceIpAddr = exchange.getIn().getHeader("source", String.class);
+		int ifindex =  exchange.getIn().getHeader("ifindex", Integer.class);
+		
+		SnmpSource source = sources.get(sourceIpAddr);
+		if (source == null) {
+			Map<String, Object> answer = new HashMap<String, Object>(1);
+			answer.put("Status", "source " + sourceIpAddr + " not found");
+			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
+			exchange.getIn().setBody(answer);
+			return;
+		}
+		
+		Optional<SnmpInterface> iface = source.getInterfaces().stream().filter(i->i.getIfIndex()==ifindex).findFirst();
+		if (!iface.isPresent()) {
+			Map<String, Object> answer = new HashMap<String, Object>(1);
+			answer.put("Status", "interface ifIndex:" + ifindex + " not found");
+			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
+			exchange.getIn().setBody(answer);
+			return;
+		}
+		SnmpInterface ifdescr = iface.get();
+		String trace = exchange.getIn().getHeader("trace", String.class);
+		if (trace != null) {
+			if (trace.equals("on")) {
+				ifdescr.setTrace(true);
+			} else {
+				ifdescr.setTrace(false);
+			}
+			Map<String, Object> answer = new HashMap<String, Object>(1);
+			answer.put("Status", "interface " + ifdescr.getIfDescr() + " tracing " + ifdescr.isTrace());
+			exchange.getIn().setBody(answer);
+			return;
+		}
+		String charge = exchange.getIn().getHeader("poll", String.class);
+		if (charge != null) {
+			if (charge.equals("on")) {
+				ifdescr.setPolling(true);
+			} else {
+				ifdescr.setPolling(false);
+			}
+			Map<String, Object> answer = new HashMap<String, Object>(1);
+			answer.put("Status", "interface " + ifdescr.getIfDescr() + " charging " + ifdescr.isPolling());
+			exchange.getIn().setBody(answer);
+			return;
+		}
+	}
+	
 	@Handler
 	public void addSource(Exchange exchange) {
 
