@@ -125,17 +125,20 @@ public class SnmpService {
 							// validate ifDescr
 							if (event.getColumns()[5] == null) {
 								log.warn("source {}: no ifDescr for index:{}",
-										source.getIpAddress(), event.getIndex()
-												.get(0));
+										source.getIpAddress(), event.getIndex().get(0));
 								return;
 							}
 
 							// get ifEntry
 							SnmpInterface ifEntry = source
-									.getSnmpInterface(event.getColumns()[5]
-											.getVariable().toString());
+									.getSnmpInterface(event.getColumns()[5].getVariable().toString());
 
 							updateIfEntry(ifEntry, event);
+							
+							// do not flush down interface
+							if (ifEntry.isDown()) {
+								ifEntry.setPolling(false);
+							}
 
 						});
 		log.info("source {}: SUCCESS, uptime:{}, ifNumber:{}",
@@ -203,7 +206,7 @@ public class SnmpService {
 						SnmpCounter bytes_out = getCounterValue(vb[4], vb[5]);
 							
 						// calculate delta counters
-						if (!source.isSkipDelta() && ifEntry.isPolling()) {
+						if (!source.isSkipDelta() && ifEntry.isUp()) {
 							ifEntry.setPollInOctets(calcDeltaCounter(
 									source.getIpAddress(), ifdescr, bytes_in,
 									ifEntry.getIfInOctets()));
@@ -344,12 +347,6 @@ public class SnmpService {
 		// update operStatus
 		if (event.getColumns()[7] != null) {
 			ifEntry.setIfOperStatus(event.getColumns()[7].getVariable().toInt());
-		}
-
-		// update polling status 
-		if (ifEntry.isDown()) {
-			// set polling off for down interface
-			ifEntry.setPolling(false);
 		}
 		
 		// update ifName

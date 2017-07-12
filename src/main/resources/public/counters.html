@@ -40,7 +40,7 @@
     <!-- page content -->
     <div class="container">
 		<div class="row">
-        	<h2>Interface pollData Counters</h2>
+        	<h2>Charging Interface Counters</h2>
         	<h5>last poll @ <span id="updated"></span></h5>
         </div>
         <div class="row">
@@ -49,6 +49,7 @@
             <tr>
               <th>Source</th>
               <th>ifDescr</th>
+              <th>trace</th>
               <th>In MB</th>
               <th>In Mbit/s</th>
               <th>Out MB</th>
@@ -83,7 +84,7 @@
             }
             ifEntry.Ip = source;
           	ifEntry.ifdescr += (ifEntry.ifalias)?" ("+ifEntry.ifalias+")":"";
-          	ifEntry.ifdescr += (ifEntry.trace)?" <span class=\"label label-info small\">trace</span>":"";
+          	ifEntry.isTrace = (ifEntry.trace)?" <span class=\"label label-info small\">trace</span>":"";
           	ifEntry.rate_in = bandwith(ifEntry.pollInOctets);
             ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets,'MB');
             ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets,'MB');
@@ -100,12 +101,13 @@
         //{ data: "actionTrace","orderable":false },
         { data: "Ip" },
         { data: "ifdescr" },
+        { data: "isTrace" },
         { data: "bytes_in" },
         { data: "rate_in" },
         { data: "bytes_out" },
         { data: "rate_out" }
        ],
-       "order": [[4, 'desc']]
+       "order": [[6, 'desc']]
     });      
     </script>
   </body>

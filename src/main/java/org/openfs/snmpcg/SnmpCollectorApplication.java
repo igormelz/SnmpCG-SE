@@ -100,15 +100,15 @@ public class SnmpCollectorApplication {
 					
 					.get("/sources/{source}/interfaces")
 					.param().name("trace").type(RestParamType.query).endParam()
-					.param().name("polling").type(RestParamType.query).endParam()
+					.param().name("flush").type(RestParamType.query).endParam()
 					.to("bean:sources?method=getSourceInterfaces")
 					
 					.get("/sources/interfaces")
-					.to("bean:sources?method=getPollingInterfaces")
+					.to("bean:sources?method=getChargingInterfaces")
 					
 					.put("/sources/{source}/interfaces/{ifindex}")
 					.param().name("trace").type(RestParamType.query).endParam()
-					.param().name("polling").type(RestParamType.query).endParam()
+					.param().name("flush").type(RestParamType.query).endParam()
 					.to("bean:sources?method=updateSourceInterface")
 					;
 			

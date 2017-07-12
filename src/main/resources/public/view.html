@@ -70,22 +70,24 @@
   			</div>
 			<ul class="list-group">
 				<li class="list-group-item small"><label>Uptime: </label><span id="sysUptime"></span></li>
-				<li class="list-group-item small"><label>Action: </label>
-				<div class="btn-group btn-group-sm" role="group" aria-label="Action">
-        	    <button type="button" class="btn btn-default" id="traceAllOn"><span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> trace On</button>
-        		<button type="button" class="btn btn-default" id="traceAllOff"><span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> trace Off</button>       	
-        		<div class="btn-group btn-group-sm" role="group" aria-label="Action">	
-        		<button type="button" class="btn btn-default" id="pollAllOn"><span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> pollData On</button>
-        		<button type="button" class="btn btn-default" id="pollAllOff"><span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> pollData Off</button>
-        		</div>
-        		</div>
-				</li>
 				<li class="list-group-item small"><label>Filter: </label>
 				<div class="btn-group btn-group-sm" role="group" aria-label="View">
-        		<button type="button" class="btn btn-default" id="ifAll"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> ifNumber <span id="ifNumber" class="badge"></span></button>
-        		<button type="button" class="btn btn-success" id="ifPolled"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> Poll Data <span id="pollCount" class="badge">0</span></button>
+        		<button type="button" class="btn btn-default" id="ifNumber"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> ifNumber <span id="ifNumberCount" class="badge"></span></button>
+        		<button type="button" class="btn btn-success" id="ifFlushed"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> Flush <span id="flushCount" class="badge">0</span></button>
         		<button type="button" class="btn btn-info" id="ifTraced"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> Trace <span id="traceCount" class="badge">0</span></button>
-        		</div>				
+        		</div></li>
+        		<li class="list-group-item small"><label>Action: </label>
+				<div class="btn-group btn-group-sm" role="group" aria-label="Action">
+        	    <button type="button" class="btn btn-default" id="traceOn">
+        	    	<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> Trace On
+        	    </button>
+        		<button type="button" class="btn btn-default" id="traceOff"><span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> Trace Off</button>       	
+        		</div>
+        		<div class="btn-group btn-group-sm" role="group" aria-label="Action">	
+        		<button type="button" class="btn btn-default" id="flushOn"><span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> Flush On</button>
+        		<button type="button" class="btn btn-default" id="flushOff"><span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> Flush Off</button>
+        		</div>
+				</li>			
         	</ul>
 		</div>
 		</div>		
@@ -96,10 +98,10 @@
               <th>ifDescr</th>
               <th>ifIndex</th>
               <th>Status</th>
-              <th>poll In MB</th>
-              <th>poll In Mbit/s</th>
-              <th>poll Out MB</th>
-              <th>poll Out Mbis/s</th>
+              <th>In</th>
+              <th>Out</th>
+              <th>In</th>
+              <th>Out</th>
             </tr>
           </thead>
           <tbody>
@@ -153,12 +155,12 @@
             	}            
             	if (source.sysName) {
             		$("#sysName").text(source.sysName);
-            		$("#ifNumber").text(source.ifNumber);
+            		$("#ifNumberCount").text(source.ifNumber);
             		$("#sysUptime").text(uptime(source.sysUptime));
             		$("#sysDescr").text(source.sysDescr);
-            		$("#stateUp").text(source.stateUpCounter);
-            		$("#stateDown").text(source.stateDownCounter);
-            		$("#pollCount").text(source.pollingCounter);
+            		//$("#stateUp").text(source.stateUpCounter);
+            		//$("#stateDown").text(source.stateDownCounter);
+            		$("#flushCount").text(source.flushCounter);
             		$("#traceCount").text(source.traceCounter);
             	}
             }
@@ -172,9 +174,9 @@
         //dataSrc: '' 
         dataSrc: function(ifTable) {
           ifTable.forEach(function(ifEntry){
-            var actionPoll="<a class=\"label label-"+(ifEntry.polling?"success":"default")+" small\" onclick=\"updateIf("+ifEntry.ifIndex+","+(ifEntry.polling?"'poll=off'":"'poll=on'")+")\">pollData</a> ";
+            var actionFlush="<a class=\"label label-"+(ifEntry.polling?"success":"default")+" small\" onclick=\"updateIf("+ifEntry.ifIndex+","+(ifEntry.polling?"'flush=off'":"'flush=on'")+")\">flush</a> ";
             var actionTrace="<a class=\"label label-"+(ifEntry.trace?"info":"default")+" small\" onclick=\"updateIf("+ifEntry.ifIndex+","+(ifEntry.trace?"'trace=off'":"'trace=on'")+")\">trace</a> ";
-          	ifEntry.ifDescr = actionPoll + actionTrace + ifEntry.ifDescr;
+          	ifEntry.ifDescr = actionFlush + actionTrace + ifEntry.ifDescr;
           	ifEntry.ifDescr += (ifEntry.ifAlias)?" ("+ifEntry.ifAlias+")":"";
             ifEntry.state = (ifEntry.up)?"<span class=\"text-info\">up</span>":"<span class=\"text-danger\">down</span>";
             ifEntry.rate_in = bandwith(ifEntry.pollInOctets);
@@ -241,45 +243,40 @@
         }
     } );
     
-    $('#ifPolled').on('click', function () {
-        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?polling=on" ).load();  
+    $('#ifFlushed').on('click', function () {
+        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?flush=on" ).load();  
     });
     $('#ifTraced').on('click', function () {
         dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?trace=on" ).load();  
     });
-    $('#ifAll').on('click', function () {
+    $('#ifNumber').on('click', function () {
         dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces" ).load();  
     });
     
     
-    $('#traceAllOn').on('click', function () {
+    $('#traceOn').on('click', function () {
     		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
-    			//console.log("trace idx"+idx);
     			updateIf(idx, "trace=on");
     		});
     });
     
-   $('#traceAllOff').on('click', function () {
-    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
-    			//console.log("trace idx"+idx);
+   $('#traceOff').on('click', function () {
+    		dt.columns(2, {search:'applied'} ).data().eq(0).each(function(idx){
     			updateIf(idx, "trace=off");
     		});
     });
     
-   $('#pollAllOn').on('click', function () {
+   $('#flushOn').on('click', function () {
     		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
-    			//console.log("trace idx"+idx);
-    			updateIf(idx, "poll=on");
+    			updateIf(idx, "flush=on");
     		});
     });
     
-   $('#pollAllOff').on('click', function () {
+   $('#flushOff').on('click', function () {
     		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
-    			//console.log("trace idx"+idx);
-    			updateIf(idx, "poll=off");
+    			updateIf(idx, "flush=off");
     		});
     });
-    
     
    function showNotif(message) {
         $('#responseBody').text(message.Status);

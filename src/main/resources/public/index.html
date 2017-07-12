@@ -96,9 +96,10 @@
             <tr>
               <th>Source</th>
               <th>ifNumber</th>
-              <th>polling #</th>
-              <th>poll timestamp</th>
-              <th>poll response (ms)</th>
+              <th>#if charge</th>
+              <th>#if trace</th>
+              <th>last poll</th>
+              <th>last response (ms)</th>
             </tr>
           </thead>
           <tbody>
@@ -211,7 +212,8 @@
        columns: [
         { data: "Ip" },
         { data: "ifNumber" },
-        { data: "pollingCounter" },
+        { data: "flushCounter" },
+        { data: "traceCounter" },
         { data: "pollTime" },
         { data: "pollResponse" }
        ]

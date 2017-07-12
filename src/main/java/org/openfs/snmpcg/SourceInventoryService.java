@@ -187,14 +187,14 @@ public class SourceInventoryService {
 //		long counter_up = source.getInterfaces().stream().filter(SnmpInterface::isUp).count();
 //		map.put("stateUpCounter", counter_up);
 //		map.put("stateDownCounter", source.getIftable().size() - counter_up);
-		map.put("pollingCounter",source.getInterfaces().stream().filter(SnmpInterface::isPolling).count());
+		map.put("flushCounter",source.getInterfaces().stream().filter(SnmpInterface::isPolling).count());
 		map.put("traceCounter",source.getInterfaces().stream().filter(SnmpInterface::isTrace).count());
 		map.put("pollResponse", source.getPollResponse());
 		return map;
 	};
 
 	@Handler
-	public void getPollingInterfaces(Exchange exchange) {
+	public void getChargingInterfaces(Exchange exchange) {
 		exchange.getIn().setBody(sources.values().stream().map(mapInterface).flatMap(List::stream)
 				.collect(Collectors.toList()));
 	}
@@ -211,7 +211,7 @@ public class SourceInventoryService {
 					iface.put("ifindex", e.getIfIndex());
 					iface.put("ifdescr", e.getIfDescr());
 					iface.put("ifalias", e.getIfAlias());
-					iface.put("polling", e.isPolling());
+					//iface.put("flush", e.isPolling());
 					iface.put("trace", e.isTrace());
 					iface.put("pollInOctets", e.getPollInOctets());
 					iface.put("pollOutOctets", e.getPollOutOctets());
@@ -232,8 +232,8 @@ public class SourceInventoryService {
 		}
 
 		List<SnmpInterface> ifTable = sources.get(source).getInterfaces();
-		// filter polling on (off)
-		String filter = exchange.getIn().getHeader("polling", String.class);
+		// filter flush on (off)
+		String filter = exchange.getIn().getHeader("flush", String.class);
 		if (filter != null) {
 			if ("on".equalsIgnoreCase(filter)) {
 				exchange.getIn().setBody(ifTable.stream().filter(i->i.isPolling()).collect(Collectors.toList()));
@@ -262,15 +262,12 @@ public class SourceInventoryService {
 				.filter(e -> e.isTrace())
 				.map(e -> {
 					StringBuilder sb = new StringBuilder();
-					sb.append(timeStampFormat.format(source.getPollTime()))
-							.append(fieldSeparator);
+					sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
 					sb.append(source.getIpAddress()).append(fieldSeparator);
 					sb.append(e.getIfIndex()).append(fieldSeparator);
 					sb.append(e.getIfDescr()).append(fieldSeparator);
 					sb.append(e.getIfName()).append(fieldSeparator);
-					sb.append(
-							e.getIfAlias().replace(fieldSeparator.charAt(0),
-									'.')).append(fieldSeparator);
+					sb.append(e.getIfAlias().replace(fieldSeparator.charAt(0),'.')).append(fieldSeparator);
 					sb.append(e.getIfAdminStatus()).append(fieldSeparator);
 					sb.append(e.getIfOperStatus()).append(fieldSeparator);
 					sb.append(e.getIfInOctets()).append(fieldSeparator);
@@ -283,21 +280,17 @@ public class SourceInventoryService {
 	Function<SnmpSource, String> formatChargingDataRecord = source -> {
 		return source.getInterfaces()
 				.stream()
-				// print polling and interface is up
-				.filter(e -> e.isPolling())
+				.filter(e -> e.isPolling() && e.isUp())
 				.map(e -> {
 					StringBuilder sb = new StringBuilder();
 					sb.append(source.getIpAddress()).append(fieldSeparator);
 					sb.append(e.getIfIndex()).append(fieldSeparator);
 					sb.append(e.getIfDescr()).append(fieldSeparator);
 					sb.append(e.getIfName()).append(fieldSeparator);
-					sb.append(
-							e.getIfAlias().replace(fieldSeparator.charAt(0),
-									'.')).append(fieldSeparator);
+					sb.append(e.getIfAlias().replace(fieldSeparator.charAt(0),'.')).append(fieldSeparator);
 					sb.append(e.getPollInOctets()).append(fieldSeparator);
 					sb.append(e.getPollOutOctets()).append(fieldSeparator);
-					sb.append(timeStampFormat.format(source.getPollTime()))
-							.append(fieldSeparator);
+					sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
 					sb.append(source.getPollDuration());
 					return sb.toString();
 				}).collect(Collectors.joining("\n"));
@@ -402,7 +395,7 @@ public class SourceInventoryService {
 			exchange.getIn().setBody(answer);
 			return;
 		}
-		String charge = exchange.getIn().getHeader("poll", String.class);
+		String charge = exchange.getIn().getHeader("flush", String.class);
 		if (charge != null) {
 			if (charge.equals("on")) {
 				ifdescr.setPolling(true);
