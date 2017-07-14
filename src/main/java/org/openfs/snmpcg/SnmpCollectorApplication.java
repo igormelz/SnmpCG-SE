@@ -89,8 +89,7 @@ public class SnmpCollectorApplication {
 					.to("bean:sources?method=getSource(${header.source})")
 					
 					.post("/sources/{source}")
-					.to("direct:addSource")
-					//.to("bean:sources?method=addSource")
+					.to("bean:sources?method=addSource")
 					
 					.get("/sources/del/{source}")
 					.to("bean:sources?method=removeSource")
@@ -100,29 +99,23 @@ public class SnmpCollectorApplication {
 					
 					.get("/sources/{source}/interfaces")
 					.param().name("trace").type(RestParamType.query).endParam()
-					.param().name("flush").type(RestParamType.query).endParam()
+					.param().name("chargeable").type(RestParamType.query).endParam()
 					.to("bean:sources?method=getSourceInterfaces")
 					
-					.get("/sources/interfaces")
-					.to("bean:sources?method=getChargingInterfaces")
-					
-					.put("/sources/{source}/interfaces/{ifindex}")
-					.param().name("trace").type(RestParamType.query).endParam()
-					.param().name("flush").type(RestParamType.query).endParam()
+					.put("/sources/{source}/interfaces")
+					//.param().name("trace").type(RestParamType.query).endParam()
+					//.param().name("chargeable").type(RestParamType.query).endParam()
 					.to("bean:sources?method=updateSourceInterface")
+					
+					.get("/interfaces")
+					.param().name("trace").type(RestParamType.query).endParam()
+					.param().name("chargeable").type(RestParamType.query).endParam()
+					.to("bean:sources?method=getInterfaces")
 					;
 			
 
-			// add new source 
-			from("direct:addSource")
-			.to("bean:sources?method=addSource")
-			.to("direct:pollStatus");
-
 			// scheduled poll source status
 			from("timer://validate?period={{snmpcg.validate.period:3m}}").routeId("pollStatus")
-			.to("direct:pollStatus");
-			
-			from("direct:pollStatus")
 				.split(method("sources", "getDownSources")).parallelProcessing()
 					.bean("snmpService", "pollStatus")
 				.end()

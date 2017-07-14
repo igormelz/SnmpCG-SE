@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -75,6 +74,42 @@ public class SourceInventoryService {
 				retries, timeout);
 		SnmpSource source = new SnmpSource(ipaddr, target);
 		return sources.put(ipaddr, source);
+	}
+
+	@Handler
+	public void addSource(Exchange exchange) {
+	
+		String host = exchange.getIn().getHeader("source", String.class);
+		String sourceCommunity = this.community;
+		
+		Map<String, String> answer = new HashMap<String, String>(1);	
+		StringBuilder sb = new StringBuilder("source " + host);
+
+		if (sources.containsKey(host)) {
+			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
+			sb.append(" allready exists");
+			answer.put("Status", sb.toString());
+			exchange.getIn().setBody(answer);
+			return;
+		} 
+			
+		if (exchange.getIn().getHeader("CamelHttpQuery") != null) {
+				sourceCommunity = exchange.getIn().getHeader("CamelHttpQuery",
+						String.class);
+		} else if (exchange.getIn().getBody() != null) {
+				@SuppressWarnings("unchecked")
+				Map<String, String> mb = (Map<String, String>) exchange.getIn()
+						.getBody(Map.class);
+				if (mb != null && mb.containsKey("Community")) {
+					sourceCommunity = mb.get("Community");
+				}
+		}
+	
+		addSource(host, sourceCommunity);
+		sb.append(" add to next poll with community:").append(sourceCommunity);
+		answer.put("Status", sb.toString());
+		exchange.getIn().setBody(answer);		
+		log.info("Admin UI: {}", sb.toString());
 	}
 
 	protected CommunityTarget createTarget(Address targetAddress,
@@ -184,35 +219,47 @@ public class SourceInventoryService {
 		map.put("snmpCommunity", source.getTarget().getCommunity().toString());
 		map.put("ifNumber", source.getIftable().size());
 		map.put("pollTime", source.getPollTime());
-//		long counter_up = source.getInterfaces().stream().filter(SnmpInterface::isUp).count();
-//		map.put("stateUpCounter", counter_up);
-//		map.put("stateDownCounter", source.getIftable().size() - counter_up);
-		map.put("flushCounter",source.getInterfaces().stream().filter(SnmpInterface::isPolling).count());
+		long counter_up = source.getInterfaces().stream().filter(SnmpInterface::isUp).count();
+		map.put("statusUpCounter", counter_up);
+		map.put("statusDownCounter", source.getIftable().size() - counter_up);
+		map.put("chargeableCounter",source.getInterfaces().stream().filter(SnmpInterface::isPolling).count());
 		map.put("traceCounter",source.getInterfaces().stream().filter(SnmpInterface::isTrace).count());
 		map.put("pollResponse", source.getPollResponse());
 		return map;
 	};
 
 	@Handler
-	public void getChargingInterfaces(Exchange exchange) {
-		exchange.getIn().setBody(sources.values().stream().map(mapInterface).flatMap(List::stream)
-				.collect(Collectors.toList()));
+	public void getInterfaces(Exchange exchange) {
+		List<Map<String, Object>> ifList = sources.values().stream().map(mapInterface).flatMap(List::stream)
+				.collect(Collectors.toList());
+		String filter = exchange.getIn().getHeader("chargeable", String.class);
+		if (filter != null) {
+			exchange.getIn().setBody(ifList.stream().filter(e->(Boolean)e.get("chargeable")).collect(Collectors.toList()));
+			return;	
+		}
+		
+		filter = exchange.getIn().getHeader("trace", String.class);
+		if (filter != null) {
+			exchange.getIn().setBody(ifList.stream().filter(e->(Boolean)e.get("trace")).collect(Collectors.toList()));
+			return;	
+		}
+		exchange.getIn().setBody(ifList);
 	}
-
+			
 	Function<SnmpSource, List<Map<String, Object>>> mapInterface = source -> {
-		List<Map<String, Object>> answer = source.getInterfaces()
-				.stream()
-				.filter(e -> e.isPolling())
+		List<Map<String, Object>> answer = source.getInterfaces().stream()
 				.map(e -> {
 					Map<String, Object> iface = new HashMap<String, Object>();
 					iface.put("Ip", source.getIpAddress());
 					iface.put("sysName", source.getSysName());
 					iface.put("pollTime", source.getPollTime());
+					iface.put("pollDuration", source.getPollDuration());
 					iface.put("ifindex", e.getIfIndex());
 					iface.put("ifdescr", e.getIfDescr());
 					iface.put("ifalias", e.getIfAlias());
-					//iface.put("flush", e.isPolling());
+					iface.put("chargeable", e.isPolling());
 					iface.put("trace", e.isTrace());
+					iface.put("up", e.isUp());
 					iface.put("pollInOctets", e.getPollInOctets());
 					iface.put("pollOutOctets", e.getPollOutOctets());
 					return iface;			
@@ -232,8 +279,8 @@ public class SourceInventoryService {
 		}
 
 		List<SnmpInterface> ifTable = sources.get(source).getInterfaces();
-		// filter flush on (off)
-		String filter = exchange.getIn().getHeader("flush", String.class);
+		// filter chargeable on (off)
+		String filter = exchange.getIn().getHeader("chargeable", String.class);
 		if (filter != null) {
 			if ("on".equalsIgnoreCase(filter)) {
 				exchange.getIn().setBody(ifTable.stream().filter(i->i.isPolling()).collect(Collectors.toList()));
@@ -249,6 +296,16 @@ public class SourceInventoryService {
 				exchange.getIn().setBody(ifTable.stream().filter(i->i.isTrace()).collect(Collectors.toList()));
 			} else {
 				exchange.getIn().setBody(ifTable.stream().filter(i->!i.isTrace()).collect(Collectors.toList()));
+			}
+			return;
+		}
+		// filter status = up (down)
+		filter = exchange.getIn().getHeader("status", String.class);
+		if (filter != null) {
+			if ("up".equalsIgnoreCase(filter)) {
+				exchange.getIn().setBody(ifTable.stream().filter(i->i.isUp()).collect(Collectors.toList()));
+			} else {
+				exchange.getIn().setBody(ifTable.stream().filter(i->i.isDown()).collect(Collectors.toList()));
 			}
 			return;
 		}
@@ -280,7 +337,7 @@ public class SourceInventoryService {
 	Function<SnmpSource, String> formatChargingDataRecord = source -> {
 		return source.getInterfaces()
 				.stream()
-				.filter(e -> e.isPolling() && e.isUp())
+				.filter(e -> e.isPolling())
 				.map(e -> {
 					StringBuilder sb = new StringBuilder();
 					sb.append(source.getIpAddress()).append(fieldSeparator);
@@ -363,88 +420,70 @@ public class SourceInventoryService {
 	@Handler
 	public void updateSourceInterface(Exchange exchange) { 
 		String sourceIpAddr = exchange.getIn().getHeader("source", String.class);
-		int ifindex =  exchange.getIn().getHeader("ifindex", Integer.class);
-		
 		SnmpSource source = sources.get(sourceIpAddr);
 		if (source == null) {
-			Map<String, Object> answer = new HashMap<String, Object>(1);
-			answer.put("Status", "source " + sourceIpAddr + " not found");
 			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
-			exchange.getIn().setBody(answer);
+			exchange.getIn().setBody(null);
 			return;
 		}
 		
-		Optional<SnmpInterface> iface = source.getInterfaces().stream().filter(i->i.getIfIndex()==ifindex).findFirst();
-		if (!iface.isPresent()) {
-			Map<String, Object> answer = new HashMap<String, Object>(1);
-			answer.put("Status", "interface ifIndex:" + ifindex + " not found");
-			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
-			exchange.getIn().setBody(answer);
-			return;
-		}
-		SnmpInterface ifdescr = iface.get();
-		String trace = exchange.getIn().getHeader("trace", String.class);
-		if (trace != null) {
-			if (trace.equals("on")) {
-				ifdescr.setTrace(true);
-			} else {
-				ifdescr.setTrace(false);
+		if (exchange.getIn().getBody() != null) {
+			@SuppressWarnings("unchecked")
+			Map<String, Object> data = (Map<String, Object>) exchange.getIn().getBody(Map.class);
+			if (data != null && data.containsKey("ifDescr")) {
+				Map<String, Object> answer = new HashMap<String, Object>(1);
+				
+				if (data.get("ifDescr") instanceof String) {
+					SnmpInterface ifEntry = source.getIftable().get(data.get("ifDescr"));
+					if (ifEntry == null) {
+						exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
+						exchange.getIn().setBody(null);
+						return;
+					}
+				
+					if (data.containsKey("trace")) {
+						ifEntry.setTrace((Boolean)data.get("trace"));
+						answer.put("Status", "interface " + ifEntry.getIfDescr() + " tracing " + ifEntry.isTrace());
+						exchange.getIn().setBody(answer);
+						return;
+					}
+				
+					if (data.containsKey("chargeable")) {
+						ifEntry.setPolling((Boolean)data.get("chargeable"));
+						answer.put("Status", "interface " + ifEntry.getIfDescr() + " charging " + ifEntry.isPolling());
+						exchange.getIn().setBody(answer);
+						return;
+					}
+				}
+				
+				if (data.get("ifDescr") instanceof List) {
+					@SuppressWarnings("unchecked")
+					List<String> batchIfList = (List<String>)data.get("ifDescr");
+					if (data.containsKey("trace")) {
+						batchIfList.stream().forEach(ifdescr -> {
+							if (source.getIftable().containsKey(ifdescr)) {
+								source.getIftable().get(ifdescr).setTrace((Boolean)data.get("trace"));
+							}
+						});
+						answer.put("Status", "Total " + batchIfList.size() + " interfaces charging " + (Boolean)data.get("trace"));
+						exchange.getIn().setBody(answer);
+						return;
+					}
+					if (data.containsKey("chargeable")) {
+						batchIfList.stream().forEach(ifdescr -> {
+							if (source.getIftable().containsKey(ifdescr)) {
+								source.getIftable().get(ifdescr).setPolling((Boolean)data.get("chargeable"));
+							}
+						});
+						answer.put("Status", "Total " + batchIfList.size() + " interfaces charging " + (Boolean)data.get("chargeable"));
+						exchange.getIn().setBody(answer);
+						return;
+					}
+				}
 			}
-			Map<String, Object> answer = new HashMap<String, Object>(1);
-			answer.put("Status", "interface " + ifdescr.getIfDescr() + " tracing " + ifdescr.isTrace());
-			exchange.getIn().setBody(answer);
-			return;
-		}
-		String charge = exchange.getIn().getHeader("flush", String.class);
-		if (charge != null) {
-			if (charge.equals("on")) {
-				ifdescr.setPolling(true);
-			} else {
-				ifdescr.setPolling(false);
-			}
-			Map<String, Object> answer = new HashMap<String, Object>(1);
-			answer.put("Status", "interface " + ifdescr.getIfDescr() + " charging " + ifdescr.isPolling());
-			exchange.getIn().setBody(answer);
-			return;
 		}
 	}
 	
-	@Handler
-	public void addSource(Exchange exchange) {
-
-		String host = exchange.getIn().getHeader("source", String.class);
-		String sourceCommunity = this.community;
-
-		StringBuilder sb = new StringBuilder("source " + host);
-
-		if (sources.containsKey(host)) {
-
-			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
-			sb.append(" allready exists");
-
-		} else {
-
-			if (exchange.getIn().getHeader("CamelHttpQuery") != null) {
-				sourceCommunity = exchange.getIn().getHeader("CamelHttpQuery",
-						String.class);
-			} else if (exchange.getIn().getBody() != null) {
-				@SuppressWarnings("unchecked")
-				Map<String, String> mb = (Map<String, String>) exchange.getIn()
-						.getBody(Map.class);
-				if (mb != null && mb.containsKey("Community")) {
-					sourceCommunity = mb.get("Community");
-				}
-			}
-
-			addSource(host, sourceCommunity);
-			sb.append(" add to poll with community:").append(sourceCommunity);
-		}
-		Map<String, String> answer = new HashMap<String, String>(1);
-		answer.put("Status", sb.toString());
-		exchange.getIn().setBody(answer);
-		log.info("Admin UI: {}", sb.toString());
-	}
-
 	@Handler
 	public void removeSource(Exchange exchange) {
 		String sourceIpAddr = exchange.getIn()
