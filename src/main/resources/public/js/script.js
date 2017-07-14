@@ -26,8 +26,11 @@
     }
     
     // calcRate 
-    function bandwith(bytes) {
-    	var bps = (Number.parseInt(bytes) * 8) / 300;
+    function bandwidth(bytes,duration) {
+    	if (bytes == 0) {
+    		return 0;
+    	}
+    	var bps = (Number.parseInt(bytes) * 800) / duration;
     	/*
     	if (bps > 1000*1000*1000) {
     		return (bps/(1000*1000*1000)).toFixed(1)+" Gbit/s";

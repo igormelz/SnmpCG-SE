@@ -19,7 +19,7 @@ public final class SnmpSource implements Serializable {
 	private String sysLocation;
 	private final Map<String,SnmpInterface> iftable = new HashMap<String,SnmpInterface>();
 	private long pollTime;
-	private long pollDuration;
+	transient private long pollDuration;
 	transient private boolean skipDelta = true;
 	transient private long pollResponse;
 	

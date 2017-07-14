@@ -31,7 +31,8 @@
         <!-- nav links -->
         <ul class="nav navbar-nav">
           <li><a href="index.html">Sources</a></li>
-          <li class="active"><a href="counters.html">Counters</a></li>
+          <li class="active"><a href="chargeable.html">ChargeableIF</a></li>
+          <li><a href="trace.html">TraceIF</a></li>
         </ul>
       </div>
       <!-- /.container -->
@@ -39,21 +40,17 @@
     
     <!-- page content -->
     <div class="container">
-		<div class="row">
-        	<h2>Charging Interface Counters</h2>
-        	<h5>last poll @ <span id="updated"></span></h5>
-        </div>
         <div class="row">
         <table id="tbl_data" class="table table-condensed">
           <thead>
             <tr>
-              <th>Source</th>
+              <th></th>
               <th>ifDescr</th>
-              <th>trace</th>
-              <th>In MB</th>
-              <th>In Mbit/s</th>
-              <th>Out MB</th>
-              <th>Out Mbis/s</th>
+              <th>last poll</th>
+              <th>Mbps In</th>
+              <th>Mbps Out</th>
+              <th>bytes In</th>
+              <th>bytes Out</th>
             </tr>
           </thead>
           <tbody>
@@ -72,25 +69,24 @@
     <script>   
 	var table = $('#tbl_data').DataTable({
        ajax: {
-        url: "/api/v1/sources/interfaces",
+        url: "/api/v1/interfaces?chargeable",
         dataSrc: function(ifTable) {
           var lastPoll = 0;
           ifTable.forEach(function(ifEntry){
-          	var source = "<a href=\"view.html?ip="+ifEntry.Ip+"\">";
-          	if (ifEntry.sysName) {
-            	source += ifEntry.sysName+" ["+ifEntry.Ip+"]</a>";
-          	} else {
-            	source += ifEntry.Ip + "</a>";
-            }
-            ifEntry.Ip = source;
+            ifEntry.status = (ifEntry.up)?"<label class=\"label label-info\">up</label> ":"<label class=\"label label-warning\">down</label> ";
+          	var source = (ifEntry.sysName)?ifEntry.sysName+" ["+ifEntry.Ip+"]":ifEntry.Ip;
+            ifEntry.Ip = "<a title=\"click to view interfaces\" href=\"view.html?ip="+ifEntry.Ip+"\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a> ";
+            ifEntry.Ip +="<small>"+source+"</small>";
           	ifEntry.ifdescr += (ifEntry.ifalias)?" ("+ifEntry.ifalias+")":"";
-          	ifEntry.isTrace = (ifEntry.trace)?" <span class=\"label label-info small\">trace</span>":"";
-          	ifEntry.rate_in = bandwith(ifEntry.pollInOctets);
-            ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets,'MB');
-            ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets,'MB');
-            ifEntry.rate_out = bandwith(ifEntry.pollOutOctets);
+          	ifEntry.ifdescr += "<br/>"+ifEntry.Ip;
+          	ifEntry.ifdescr += (ifEntry.trace)?" <span class=\"label label-info small\">trace</span>":"";
+          	ifEntry.rate_in = bandwidth(ifEntry.pollInOctets,ifEntry.pollDuration);
+            ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets);
+            ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets);
+            ifEntry.rate_out = bandwidth(ifEntry.pollOutOctets,ifEntry.pollDuration);
             //ifEntry.actionTrace="<span class=\"label label-"+(ifEntry.trace?"info":"default")+" small\">trace</span>";
-            if (lastPoll < ifEntry.pollTime) { lastPoll = ifEntry.pollTime };
+            //if (lastPoll < ifEntry.pollTime) { lastPoll = ifEntry.pollTime };
+            ifEntry.pollTime = new Date(ifEntry.pollTime).toLocaleString();
           });
           $("#updated").text(new Date(lastPoll).toLocaleString());
           return ifTable;
@@ -98,16 +94,15 @@
        },
        lengthMenu: [[30, 50, 100, -1], [30, 50, 100, "All"]],
        columns: [
-        //{ data: "actionTrace","orderable":false },
-        { data: "Ip" },
+        { data: "status" },
         { data: "ifdescr" },
-        { data: "isTrace" },
-        { data: "bytes_in" },
-        { data: "rate_in" },
-        { data: "bytes_out" },
-        { data: "rate_out" }
+        { data: "pollTime","orderable":false,"searchable":false },
+        { data: "rate_in","searchable":false },
+        { data: "rate_out","searchable":false },
+        { data: "bytes_in","orderable":false,"searchable":false },
+        { data: "bytes_out","orderable":false,"searchable":false }
        ],
-       "order": [[6, 'desc']]
+       "order": [[3, 'desc']]
     });      
     </script>
   </body>
