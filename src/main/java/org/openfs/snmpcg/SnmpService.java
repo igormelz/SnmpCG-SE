@@ -12,7 +12,7 @@ import org.snmp4j.util.DefaultPDUFactory;
 import org.snmp4j.util.TableEvent;
 import org.snmp4j.util.TableUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.actuate.metrics.GaugeService;
+import org.springframework.boot.actuate.metrics.CounterService;
 import org.springframework.stereotype.Service;
 import org.openfs.snmpcg.model.SnmpCounter;
 import org.openfs.snmpcg.model.SnmpInterface;
@@ -55,12 +55,12 @@ public class SnmpService {
 			sysDescrOID, sysNameOID, sysLocationOID, ifNumberOID, ifDescrOID,
 			ifAdminStatusOID, ifOperStatusOID, ifNameOID, ifAliasOID };
 
-	private GaugeService gaugePollResponse;
+	private CounterService counterService;
 	private Snmp snmp;
 	
 	@Autowired
-	public SnmpService(GaugeService gaugeService) throws IOException {
-		this.gaugePollResponse = gaugeService;
+	public SnmpService(CounterService counterService) throws IOException {
+		this.counterService = counterService;
 		snmp = new Snmp(new DefaultUdpTransportMapping());
 		snmp.listen();
 	}
@@ -101,6 +101,7 @@ public class SnmpService {
 		if (vbs[4] == null
 				|| (vbs[4] != null && vbs[4].getVariable().toInt() == 0)) {
 			log.warn("source {}: has no interfaces", source.getIpAddress());
+			counterService.increment("counter.snmp.logWarn");
 			source.setStatus(SnmpSourceStatus.NO_IFTABLE);
 			return;
 		}
@@ -115,34 +116,26 @@ public class SnmpService {
 				.forEach(
 						event -> {
 
-							if (event.getColumns() == null
-									|| event.getColumns().length < 6) {
-								log.warn("source {}: no ifTable in response",
-										source.getIpAddress());
+							if (event.getColumns() == null || event.getColumns().length < 6) {
+								log.warn("source {}: no ifTable in response", source.getIpAddress());
+								counterService.increment("counter.snmp.logWarn");
 								return;
 							}
 
 							// validate ifDescr
 							if (event.getColumns()[5] == null) {
-								log.warn("source {}: no ifDescr for index:{}",
-										source.getIpAddress(), event.getIndex().get(0));
+								log.warn("source {}: no ifDescr for index:{}", source.getIpAddress(), event.getIndex().get(0));
+								counterService.increment("counter.snmp.logWarn");
 								return;
 							}
 
 							// get ifEntry
-							SnmpInterface ifEntry = source
-									.getSnmpInterface(event.getColumns()[5].getVariable().toString());
+							SnmpInterface ifEntry = source.getSnmpInterface(event.getColumns()[5].getVariable().toString());
 
 							updateIfEntry(ifEntry, event);
 							
-							// do not flush down interface
-							if (ifEntry.isDown()) {
-								ifEntry.setPolling(false);
-							}
-
 						});
-		log.info("source {}: SUCCESS, uptime:{}, ifNumber:{}",
-				source.getIpAddress(), uptime, events.size() - 1);
+		log.info("source {}: SUCCESS, uptime:{}, ifNumber:{}", source.getIpAddress(), uptime, events.size() - 1);
 	}
 
 	@Handler
@@ -160,11 +153,6 @@ public class SnmpService {
 		long endPollTime = System.currentTimeMillis();
 		source.setPollTime(endPollTime);
 		source.setPollResponse((endPollTime - startPollTime));
-
-		// update metric
-		gaugePollResponse.submit(
-				"gauge.snmp.response." + source.getIpAddress(),
-				(double) (endPollTime - startPollTime));
 
 		// return if no events was received
 		if (events == null)
@@ -189,9 +177,8 @@ public class SnmpService {
 
 					// validate ifDescr
 						if (vb == null || vb.length < 1 || vb[1] == null) {
-							log.warn("source {}: no ifDescr for index:{}",
-									source.getIpAddress(), event.getIndex()
-											.get(0));
+							log.warn("source {}: no ifDescr for index:{}", source.getIpAddress(), event.getIndex().get(0));
+							counterService.increment("counter.snmp.logWarn");
 							return;
 						}
 
@@ -241,12 +228,10 @@ public class SnmpService {
 		// process not existing interfaces
 		if (toremove != null && !toremove.isEmpty()) {
 			for (String ifdescr : toremove) {
-				log.warn("source {}: not found in response ifdescr: {}",
-						source.getIpAddress(), ifdescr);
+				log.warn("source {}: not found in response ifdescr: {}", source.getIpAddress(), ifdescr);
 				if (source.getSnmpInterface(ifdescr).isMarked()) {
 					source.removeSnmpInterace(ifdescr);
-					log.info("source {}: remove interface ifdescr: {}",
-							source.getIpAddress(), ifdescr);
+					log.info("source {}: remove interface ifdescr: {}",	source.getIpAddress(), ifdescr);
 				} else {
 					source.getSnmpInterface(ifdescr).setMarked();
 				}
@@ -263,9 +248,9 @@ public class SnmpService {
 
 		// validate timeout
 		if (events.size() == 1 && events.get(0).isError()) {
-			log.error("source {}: {}", source.getIpAddress(), events.get(0)
-					.getErrorMessage());
+			log.error("source {}: {}", source.getIpAddress(), events.get(0).getErrorMessage());
 			source.setStatus(SnmpSourceStatus.TIMEOUT);
+			counterService.increment("counter.snmp.logError");
 			return null;
 		}
 
@@ -273,6 +258,7 @@ public class SnmpService {
 		if (events == null || events.isEmpty()) {
 			source.setStatus(SnmpSourceStatus.NO_PDU);
 			log.error("source {}: no responsePDU (null)", source.getIpAddress());
+			counterService.increment("counter.snmp.logError");
 			return null;
 		}
 
@@ -308,24 +294,20 @@ public class SnmpService {
 		}
 
 		if (pollCounter.getValue() == 0 && lastCounter.getValue() > 0) {
-			log.warn(
-					"source {}: ifdescr:{} - fake overflow counter: current={} last={}",
-					sourceIpAddr, ifDescr, pollCounter, lastCounter);
+			log.warn("source {}: ifdescr:{} - fake overflow counter: current={} last={}", sourceIpAddr, ifDescr, pollCounter, lastCounter);
+			counterService.increment("counter.snmp.logWarn");
 			return 0L;
 		}
 
 		if (pollCounter.getValue() < lastCounter.getValue()
 				&& pollCounter.getType() == lastCounter.getType()) {
 			if (pollCounter.getType() == 32) {
-				log.warn(
-						"source {}: ifdescr:{} - overflow counter: current={} last={}",
-						sourceIpAddr, ifDescr, pollCounter, lastCounter);
-				return COUNTER32_MAX_VALUE + pollCounter.getValue()
-						- lastCounter.getValue();
+				log.warn("source {}: ifdescr:{} - overflow counter: current={} last={}", sourceIpAddr, ifDescr, pollCounter, lastCounter);
+				counterService.increment("counter.snmp.logWarn");
+				return COUNTER32_MAX_VALUE + pollCounter.getValue() - lastCounter.getValue();
 			} else {
-				log.warn(
-						"source {}: ifdescr:{} - overflow 64 bit counter: current={} last={}",
-						sourceIpAddr, ifDescr, pollCounter, lastCounter);
+				log.warn("source {}: ifdescr:{} - overflow 64 bit counter: current={} last={}",	sourceIpAddr, ifDescr, pollCounter, lastCounter);
+				counterService.increment("counter.snmp.logWarn");
 				return 0L;
 			}
 		}
@@ -355,7 +337,7 @@ public class SnmpService {
 		}
 
 		// update ifAlias
-		if (event.getColumns()[9] != null && ifEntry.getIfAlias() == null) {
+		if (event.getColumns()[9] != null) {
 			ifEntry.setIfAlias(event.getColumns()[9].getVariable().toString());
 		}
 	}
@@ -363,6 +345,7 @@ public class SnmpService {
 	private boolean validateSkipDelta(SnmpSource source, long sysUptime) {
 		if (source.getSysUptime() != 0 && source.getSysUptime() > sysUptime) {
 			log.warn("source {}: was rebooted. Reset all counter", source.getIpAddress());
+			counterService.increment("counter.snmp.logWarn");
 			// reset Counters and skip calcDelta on next poll
 			source.resetSnmpInterfaceCounters();
 			source.setSkipDelta(true);
