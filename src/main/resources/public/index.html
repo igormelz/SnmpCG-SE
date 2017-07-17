@@ -37,8 +37,7 @@
         <!-- nav links -->
         <ul class="nav navbar-nav">
           <li class="active"><a href="index.html">Sources</a></li>
-          <li><a href="chargeable.html">ChargeableIF</a></li>
-          <li><a href="trace.html">TraceIF</a></li>
+          <li><a href="counters.html">PollCounters</a></li>
         </ul>
       </div>
       <!-- /.container -->
@@ -53,22 +52,21 @@
         	</div>
         </div>
 		<div class="row">
-			<div class="col-md-8">
+			<div class="col-md-9">
 			<ul class="list-group">
 				<li class="list-group-item small">
-				<label>Filter: </label>
 		   		<div class="btn-group btn-group-sm" role="group" aria-label="View">
-          			<button type="radio" id="filter_all" class="btn btn-info active"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> ALL <span id="allVal" class="badge"></span></button>
-          			<button type="radio" id="filter_success" class="btn btn-success"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> SUCCESS <span id="successVal" class="badge"></span></button>
-          			<button type="radio" id="filter_timeout" class="btn btn-danger"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> TIMEOUT <span id="timeoutVal" class="badge"></span></button>
-          			<button type="radio" id="filter_nopdu" class="btn btn-warning"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> NO PDU <span id="nopduVal" class="badge"></span></button>
-          			<button type="radio" id="filter_noif" class="btn btn-warning"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> NO IFTABLE <span id="noifVal" class="badge"></span></button>
-          			<button type="radio" id="filter_unknown" class="btn btn-default"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> UNKNOWN <span id="unknownVal" class="badge"></span></button>
+          			<button title="view all sources" type="radio" id="filter_all" class="btn btn-info active"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> ALL <span id="allVal" class="badge"></span></button>
+          			<button title="view up sources" type="radio" id="filter_success" class="btn btn-success"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> SUCCESS <span id="successVal" class="badge"></span></button>
+          			<button title="view timeout sources" type="radio" id="filter_timeout" class="btn btn-danger"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> TIMEOUT <span id="timeoutVal" class="badge"></span></button>
+          			<button title="view error sources" type="radio" id="filter_nopdu" class="btn btn-warning"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> NO PDU <span id="nopduVal" class="badge"></span></button>
+          			<button title="view error sources" type="radio" id="filter_noif" class="btn btn-warning"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> NO IFTABLE <span id="noifVal" class="badge"></span></button>
+          			<button title="view pending status sources" type="radio" id="filter_unknown" class="btn btn-default"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> UNKNOWN <span id="unknownVal" class="badge"></span></button>
 				</div>
 				</li>
 			</ul>
 			</div>
-			<div class="col-md-4">
+			<div class="col-md-3">
         		<button type="button" class="btn btn-default navbar-btn navbar-right" data-toggle="modal" data-target="#myModal">
         			<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Source
         		</button>
@@ -79,9 +77,9 @@
             <tr>
               <th></th>
               <th>Source</th>
-              <th># Status Up</th>
-              <th># Chargeable</th>
-              <th># Trace</th>
+              <th>#Up</th>
+              <th>#Chargeable</th>
+              <th>#Trace</th>
               <th>last poll</th>
               <th>last response (ms)</th>
             </tr>
@@ -151,7 +149,7 @@
         if (message != null) {
         	$('#source_add').text(message.Status);
         	$('#source_add').removeClass('hidden');
-        	setTimeout(function(){ $('#source_add').addClass('hidden'); }, 3000);
+        	setTimeout(function(){ $('#source_add').addClass('hidden'); }, 1000);
         	fillCounter();
         	dt.ajax.reload();
         }
@@ -249,9 +247,8 @@
        columns: [
         { "class":"detail","orderable":false,"data":null,
           "defaultContent": "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-right\" aria-hidden=\"true\"></span>"},
-        //{ "data":"viewIF", "orderable":false },
         { data: "SourceInfo" },
-        { data: "ifNumber" },
+        { data: "statusUpCounter" },
         { data: "chargeableCounter" },
         { data: "traceCounter" },
         { data: "pollTime" },

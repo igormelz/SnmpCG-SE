@@ -35,8 +35,7 @@
         </div>
         <ul class="nav navbar-nav">
           <li><a href="index.html">Sources</a></li>
-          <li><a href="chargeable.html">ChargeableIF</a></li>
-          <li><a href="trace.html">TraceIF</a></li>
+          <li><a href="counters.html">PollCounters</a></li>
         </ul>
       </div>
     </nav>
@@ -52,27 +51,26 @@
 			<ul class="list-group">
 			<!-- filters -->
 				<li class="list-group-item small">
-				<label>Filter: </label>
 				<div class="btn-group btn-group-sm" role="group" aria-label="View">
-        			<button type="button" class="btn btn-default" id="ifNumber">
+        			<button title="view ifup" type="button" class="btn btn-info" id="ifStatusUp">
         				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-        				ifNumber <span id="ifNumberCount" class="badge"></span>
+        				Up <span id="statusUpCount" class="badge">0</span>
         			</button>
-        			<button type="button" class="btn btn-info" id="ifStatusUp">
+        			<button title="view ifdown" type="button" class="btn btn-warning" id="ifStatusDown">
         				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-        				ifNumber Up <span id="statusUpCount" class="badge">0</span>
+        				Down <span id="statusDownCount" class="badge">0</span>
         			</button>
-        			<button type="button" class="btn btn-warning" id="ifStatusDown">
-        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-        				ifNumber Down <span id="statusDownCount" class="badge">0</span>
-        			</button>
-        			<button type="button" class="btn btn-success" id="ifChargeable">
+        			<button title="view chargeable" type="button" class="btn btn-success" id="ifChargeable">
         				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
         				Chargeable <span id="chargeableCount" class="badge">0</span>
         			</button>
-        			<button type="button" class="btn btn-info" id="ifTraced">
+        			<button title="view trace" type="button" class="btn btn-info" id="ifTraced">
         				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
         				Trace <span id="traceCount" class="badge">0</span>
+        			</button>
+        			<button title="view all" type="button" class="btn btn-default" id="ifNumber">
+        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+        				ifNumber <span id="ifNumberCount" class="badge"></span>
         			</button>
         		</div></li>
         	</ul>
@@ -88,14 +86,14 @@
               <td>bytes In</td>
               <td>bytes Out</td>
               <td><button title="apply to all" type="button" class="btn btn-success btn-xs" id="chargeableOn">
-        				<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span>On</button>
+        				<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> On</button>
         		   <button title="apply to all" type="button" class="btn btn-default btn-xs" id="chargeableOff">
-        		   		<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span>Off</button>
+        		   		<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> Off</button>
         	  </td>
         	  <td><button title="apply to all" type="button" class="btn btn-info btn-xs" id="traceOn">
-        	    		<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span>On</button>
+        	    		<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> On</button>
         		  <button title="apply to all" type="button" class="btn btn-default btn-xs" id="traceOff">
-        				<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span>Off</button>      
+        				<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> Off</button>      
         	  </td>
             </tr>
           </thead>
@@ -141,12 +139,24 @@
     
  	var dt = $('#ifTable').DataTable({
        ajax: {
-        url: "/api/v1/sources/"+ip+"/interfaces",
+        url: "/api/v1/sources/"+ip+"/interfaces?status=up",
         //dataSrc: '' 
         dataSrc: function(ifTable) {
           ifTable.forEach(function(ifEntry){
-            ifEntry.actionCharge="<a title=\"click to change\" class=\"label small "+(ifEntry.polling?"label-success":"label-default")+"\" onclick=\"updateIfchargeable('"+ifEntry.ifDescr+"',"+(!ifEntry.polling)+")\">chargeable</a> ";
-            ifEntry.actionTrace="<a title=\"click to change\" class=\"label label-"+(ifEntry.trace?"info":"default")+" small\" onclick=\"updateIftrace('"+ifEntry.ifDescr+"',"+(!ifEntry.trace)+")\">trace</a> ";
+          	if(ifEntry.chargeable) {
+            	ifEntry.actionCharge="<a title=\"click to uncharge\" class=\"label label-success\" onclick=\"updateIfchargeable('"+ifEntry.ifDescr+"',"+(!ifEntry.chargeable)+")\">";
+            	ifEntry.actionCharge+="<span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> charge</a>";
+            } else {
+            	ifEntry.actionCharge="<a title=\"click to charge\" class=\"label label-default\" onclick=\"updateIfchargeable('"+ifEntry.ifDescr+"',"+(!ifEntry.chargeable)+")\">";
+            	ifEntry.actionCharge+="<span class=\"glyphicon glyphicon-ok\" aria-hidden=\"true\"></span> charge</a>";
+            }
+            if(ifEntry.trace){
+            	ifEntry.actionTrace="<a title=\"click to untrace\" class=\"label label-info\" onclick=\"updateIftrace('"+ifEntry.ifDescr+"',"+(!ifEntry.trace)+")\">";
+            	ifEntry.actionTrace+="<span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> trace</a>";
+            }else{
+        		ifEntry.actionTrace="<a title=\"click to trace\" class=\"label label-default\" onclick=\"updateIftrace('"+ifEntry.ifDescr+"',"+(!ifEntry.trace)+")\">";
+            	ifEntry.actionTrace+="<span class=\"glyphicon glyphicon-ok\" aria-hidden=\"true\"></span> trace</a>"; 
+            }          
             ifEntry.status = (ifEntry.up)?"<label class=\"label label-info\">up</label> ":"<label class=\"label label-warning\">down</label> ";
           	ifEntry.ifDescr += (ifEntry.ifAlias)?" ("+ifEntry.ifAlias+")":"";
           	//ifEntry.action = actionCharge + actionTrace;
