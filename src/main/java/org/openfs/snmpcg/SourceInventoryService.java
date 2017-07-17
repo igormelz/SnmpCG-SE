@@ -12,6 +12,7 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,10 @@ import org.snmp4j.mp.SnmpConstants;
 import org.snmp4j.smi.Address;
 import org.snmp4j.smi.GenericAddress;
 import org.snmp4j.smi.OctetString;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.metrics.CounterService;
+import org.springframework.boot.actuate.metrics.GaugeService;
 import org.springframework.stereotype.Service;
 import org.openfs.snmpcg.model.SnmpInterface;
 import org.openfs.snmpcg.model.SnmpSource;
@@ -62,16 +66,29 @@ public class SourceInventoryService {
 	private String fieldSeparator;
 
 	private Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
+
+	private final static Pattern ipaddr_pattern = Pattern.compile("\\d+.\\d+.\\d+.\\d+");
+	
+	private CounterService counterSources;
+	private GaugeService gaugeSources;
+	
+	@Autowired
+	public SourceInventoryService(GaugeService gaugeService, CounterService counterService) {
+		this.counterSources = counterService;
+		this.gaugeSources = gaugeService;
+	}
 	
 	protected SnmpSource addSource(String ipaddr, String community) {
+		if (!ipaddr_pattern.matcher(ipaddr).matches()) {
+			log.error("bad format ip addr:", ipaddr);
+			return null;
+		}
 		Address targetAddress = GenericAddress.parse("udp:" + ipaddr + "/161");
 		return addSource(ipaddr, targetAddress, community);
 	}
 
-	protected SnmpSource addSource(String ipaddr, Address targetAddress,
-			String community) {
-		CommunityTarget target = createTarget(targetAddress, community,
-				retries, timeout);
+	protected SnmpSource addSource(String ipaddr, Address targetAddress, String community) {
+		CommunityTarget target = createTarget(targetAddress, community,	retries, timeout);
 		SnmpSource source = new SnmpSource(ipaddr, target);
 		return sources.put(ipaddr, source);
 	}
@@ -125,16 +142,12 @@ public class SourceInventoryService {
 
 	@Handler
 	public List<SnmpSource> getReadySources() {
-		return sources.values().stream()
-				.filter(info -> info.getStatus().isUp())
-				.collect(Collectors.toList());
+		return sources.values().stream().filter(info -> info.getStatus().isUp()).collect(Collectors.toList());
 	}
 
 	@Handler
 	public List<SnmpSource> getDownSources() {
-		return sources.values().stream()
-				.filter(source -> source.getStatus().isDown())
-				.collect(Collectors.toList());
+		return sources.values().stream().filter(source -> source.getStatus().isDown()).collect(Collectors.toList());
 	}
 
 	public void parse(String source, String delimiter) {
@@ -149,7 +162,7 @@ public class SourceInventoryService {
 		String parsedCommunity = (values.length > 1 && !values[1].isEmpty()) ? values[1]
 				: community;
 
-		if (!Pattern.matches("\\d+.\\d+.\\d+.\\d+", parsedIpAddr)) {
+		if (!ipaddr_pattern.matcher(parsedIpAddr).matches()) {
 			log.error("wrong IPADDR for source:" + parsedIpAddr);
 			return;
 		}
@@ -222,7 +235,7 @@ public class SourceInventoryService {
 		long counter_up = source.getInterfaces().stream().filter(SnmpInterface::isUp).count();
 		map.put("statusUpCounter", counter_up);
 		map.put("statusDownCounter", source.getIftable().size() - counter_up);
-		map.put("chargeableCounter",source.getInterfaces().stream().filter(SnmpInterface::isPolling).count());
+		map.put("chargeableCounter",source.getInterfaces().stream().filter(SnmpInterface::isChargeable).count());
 		map.put("traceCounter",source.getInterfaces().stream().filter(SnmpInterface::isTrace).count());
 		map.put("pollResponse", source.getPollResponse());
 		return map;
@@ -230,8 +243,8 @@ public class SourceInventoryService {
 
 	@Handler
 	public void getInterfaces(Exchange exchange) {
-		List<Map<String, Object>> ifList = sources.values().stream().map(mapInterface).flatMap(List::stream)
-				.collect(Collectors.toList());
+		List<Map<String, Object>> ifList = sources.values().stream().map(mapInterface).flatMap(List::stream).collect(Collectors.toList());
+		
 		String filter = exchange.getIn().getHeader("chargeable", String.class);
 		if (filter != null) {
 			exchange.getIn().setBody(ifList.stream().filter(e->(Boolean)e.get("chargeable")).collect(Collectors.toList()));
@@ -243,6 +256,18 @@ public class SourceInventoryService {
 			exchange.getIn().setBody(ifList.stream().filter(e->(Boolean)e.get("trace")).collect(Collectors.toList()));
 			return;	
 		}
+		
+		filter = exchange.getIn().getHeader("stats", String.class);
+		if (filter != null) {
+			Map<String,Long> answer = new HashMap<String,Long>(3);
+			answer.put("traceCount", ifList.stream().filter(e->(Boolean)e.get("trace")).count());
+			answer.put("chargeableCount", ifList.stream().filter(e->(Boolean)e.get("chargeable")).count());
+			answer.put("ifnumberCount", (long)ifList.size());
+			exchange.getIn().setBody(answer);
+			return;	
+		}
+		
+		
 		exchange.getIn().setBody(ifList);
 	}
 			
@@ -257,7 +282,7 @@ public class SourceInventoryService {
 					iface.put("ifindex", e.getIfIndex());
 					iface.put("ifdescr", e.getIfDescr());
 					iface.put("ifalias", e.getIfAlias());
-					iface.put("chargeable", e.isPolling());
+					iface.put("chargeable", e.isChargeable());
 					iface.put("trace", e.isTrace());
 					iface.put("up", e.isUp());
 					iface.put("pollInOctets", e.getPollInOctets());
@@ -283,9 +308,9 @@ public class SourceInventoryService {
 		String filter = exchange.getIn().getHeader("chargeable", String.class);
 		if (filter != null) {
 			if ("on".equalsIgnoreCase(filter)) {
-				exchange.getIn().setBody(ifTable.stream().filter(i->i.isPolling()).collect(Collectors.toList()));
+				exchange.getIn().setBody(ifTable.stream().filter(i->i.isChargeable()).collect(Collectors.toList()));
 			} else {
-				exchange.getIn().setBody(ifTable.stream().filter(i->!i.isPolling()).collect(Collectors.toList()));
+				exchange.getIn().setBody(ifTable.stream().filter(i->!i.isChargeable()).collect(Collectors.toList()));
 			}
 			return;
 		}
@@ -311,65 +336,61 @@ public class SourceInventoryService {
 		}
 		exchange.getIn().setBody(ifTable);
 	}
-
-	Function<SnmpSource, String> formatTraceRecord = source -> {
-		return source
-				.getInterfaces()
-				.stream()
-				.filter(e -> e.isTrace())
-				.map(e -> {
-					StringBuilder sb = new StringBuilder();
-					sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
-					sb.append(source.getIpAddress()).append(fieldSeparator);
-					sb.append(e.getIfIndex()).append(fieldSeparator);
-					sb.append(e.getIfDescr()).append(fieldSeparator);
-					sb.append(e.getIfName()).append(fieldSeparator);
-					sb.append(e.getIfAlias().replace(fieldSeparator.charAt(0),'.')).append(fieldSeparator);
-					sb.append(e.getIfAdminStatus()).append(fieldSeparator);
-					sb.append(e.getIfOperStatus()).append(fieldSeparator);
-					sb.append(e.getIfInOctets()).append(fieldSeparator);
-					sb.append(e.getIfOutOctets()).append(fieldSeparator);
-					sb.append(source.getSysUptime()).append(fieldSeparator);
-					return sb.toString();
-				}).collect(Collectors.joining("\n"));
-	};
-
-	Function<SnmpSource, String> formatChargingDataRecord = source -> {
-		return source.getInterfaces()
-				.stream()
-				.filter(e -> e.isPolling())
-				.map(e -> {
-					StringBuilder sb = new StringBuilder();
-					sb.append(source.getIpAddress()).append(fieldSeparator);
-					sb.append(e.getIfIndex()).append(fieldSeparator);
-					sb.append(e.getIfDescr()).append(fieldSeparator);
-					sb.append(e.getIfName()).append(fieldSeparator);
-					sb.append(e.getIfAlias().replace(fieldSeparator.charAt(0),'.')).append(fieldSeparator);
-					sb.append(e.getPollInOctets()).append(fieldSeparator);
-					sb.append(e.getPollOutOctets()).append(fieldSeparator);
-					sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
-					sb.append(source.getPollDuration());
-					return sb.toString();
-				}).collect(Collectors.joining("\n"));
-	};
-
+	
 	@Handler
-	public String exportTraceRecords() {
+	public void exportTraceRecords(Exchange exchange) {
 		if (getReadySources().isEmpty()) {
-			return null;
+			return;
 		}
-		String exportData = getReadySources().stream().map(formatTraceRecord)
-				.collect(Collectors.joining("\n"));
-		return exportData.isEmpty() ? null : exportData;
+		StringBuilder sb = new StringBuilder();
+		getReadySources().stream().forEach(source ->{
+			source.getInterfaces().stream().filter(SnmpInterface::isTrace).forEach(ifEntry->{
+				sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
+				sb.append(source.getIpAddress()).append(fieldSeparator);
+				sb.append(ifEntry.getIfIndex()).append(fieldSeparator);
+				sb.append(ifEntry.getIfDescr()).append(fieldSeparator);
+				sb.append(ifEntry.getIfName()).append(fieldSeparator);
+				sb.append(ifEntry.getIfAlias().replace(fieldSeparator.charAt(0),'.')).append(fieldSeparator);
+				sb.append(ifEntry.getIfAdminStatus()).append(fieldSeparator);
+				sb.append(ifEntry.getIfOperStatus()).append(fieldSeparator);
+				sb.append(ifEntry.getIfInOctets()).append(fieldSeparator);
+				sb.append(ifEntry.getIfOutOctets()).append(fieldSeparator);
+				sb.append(source.getSysUptime()).append(fieldSeparator);
+				sb.append(System.lineSeparator());
+			});
+		});
+		exchange.getIn().setBody(sb.toString());
+		long numRecords = getReadySources().stream().collect(Collectors.summingLong(source->source.getInterfaces().stream().filter(SnmpInterface::isTrace).count()));
+		exchange.getIn().setHeader("countTraceRecords", numRecords );
+		gaugeSources.submit("gauge.snmp.sources.traceRecords",(double)numRecords);
 	}
-
+	
 	@Handler
-	public String exportChargingDataRecords() {
+	public void exportChargingDataRecords(Exchange exchange) {
 		if (getReadySources().isEmpty()) {
-			return null;
+			return;
 		}
-		return getReadySources().stream().map(formatChargingDataRecord)
-				.collect(Collectors.joining("\n"));
+		StringBuilder sb = new StringBuilder();
+		getReadySources().stream().forEach(source ->{
+			source.getInterfaces().stream().filter(SnmpInterface::isChargeable).forEach(ifEntry->{
+				sb.append(source.getIpAddress()).append(fieldSeparator);
+				sb.append(ifEntry.getIfIndex()).append(fieldSeparator);
+				sb.append(ifEntry.getIfDescr()).append(fieldSeparator);
+				sb.append(ifEntry.getIfName()).append(fieldSeparator);
+				sb.append(ifEntry.getIfAlias().replace(fieldSeparator.charAt(0),'.')).append(fieldSeparator);
+				sb.append(ifEntry.getPollInOctets()).append(fieldSeparator);
+				sb.append(ifEntry.getPollOutOctets()).append(fieldSeparator);
+				sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
+				sb.append(source.getPollDuration()).append(fieldSeparator);
+				sb.append((ifEntry.isUp())?1:0);
+				sb.append(System.lineSeparator());
+			});
+		});
+		exchange.getIn().setBody(sb.toString());
+		long numRecords = getReadySources().stream().collect(Collectors.summingLong(source->source.getInterfaces().stream().filter(SnmpInterface::isChargeable).count()));
+		exchange.getIn().setHeader("countChargingDataRecords", numRecords);
+		gaugeSources.submit("gauge.snmp.sources.chargingRecords",(double)numRecords);
+		updateResponseMetrics();
 	}
 
 	Function<SnmpSource, List<Object>> listChargingData = source -> {
@@ -378,7 +399,7 @@ public class SourceInventoryService {
 		source.getIftable()
 				.values()
 				.stream()
-				.filter(e -> e.isPolling()).forEach(e -> {
+				.filter(e -> e.isChargeable()).forEach(e -> {
 					answer.add(e.getIfIndex());
 					answer.add(e.getIfDescr());
 					answer.add(e.getIfName());
@@ -449,8 +470,8 @@ public class SourceInventoryService {
 					}
 				
 					if (data.containsKey("chargeable")) {
-						ifEntry.setPolling((Boolean)data.get("chargeable"));
-						answer.put("Status", "interface " + ifEntry.getIfDescr() + " charging " + ifEntry.isPolling());
+						ifEntry.setChargeable((Boolean)data.get("chargeable"));
+						answer.put("Status", "interface " + ifEntry.getIfDescr() + " charging " + ifEntry.isChargeable());
 						exchange.getIn().setBody(answer);
 						return;
 					}
@@ -472,7 +493,7 @@ public class SourceInventoryService {
 					if (data.containsKey("chargeable")) {
 						batchIfList.stream().forEach(ifdescr -> {
 							if (source.getIftable().containsKey(ifdescr)) {
-								source.getIftable().get(ifdescr).setPolling((Boolean)data.get("chargeable"));
+								source.getIftable().get(ifdescr).setChargeable((Boolean)data.get("chargeable"));
 							}
 						});
 						answer.put("Status", "Total " + batchIfList.size() + " interfaces charging " + (Boolean)data.get("chargeable"));
@@ -502,9 +523,19 @@ public class SourceInventoryService {
 		log.info("Admin UI: {}", msg.toString());
 
 		// save changes to recovery
-		setRecoveryState();
+		// setRecoveryState();
 	}
 
+	private void updateResponseMetrics() {
+		DoubleSummaryStatistics  stats = getReadySources().stream().collect(Collectors.summarizingDouble(SnmpSource::getPollResponse));
+		gaugeSources.submit("gauge.snmp.response.min",stats.getMin());
+		gaugeSources.submit("gauge.snmp.response.max",stats.getMax());
+		gaugeSources.submit("gauge.snmp.response.avg",stats.getAverage());
+		gaugeSources.submit("gauge.snmp.sources.ready", (double)sources.values().stream().filter(info -> info.getStatus().isUp()).count());
+		gaugeSources.submit("gauge.snmp.sources.down", (double)sources.values().stream().filter(info -> info.getStatus().isDown()).count());
+		counterSources.increment("counter.snmp.poll");
+	}
+	
 	@SuppressWarnings("unchecked")
 	@PostConstruct
 	protected void getRecoveryState() {
