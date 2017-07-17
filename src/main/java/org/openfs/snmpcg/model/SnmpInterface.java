@@ -27,9 +27,9 @@ public final class SnmpInterface implements Serializable {
 	}
 
 	public void setIfAdminStatus(int ifAdminStatus) {
-		// reset counters and set polling off
+		// reset counters
 		if (ifAdminStatus != 1) {
-			resetCounters();
+			resetPollCounters();
 		}
 		this.ifAdminStatus = ifAdminStatus;
 	}
@@ -37,6 +37,10 @@ public final class SnmpInterface implements Serializable {
 	public void resetCounters() {
 		ifInOctets.reset();
 		ifOutOctets.reset();
+		resetPollCounters();
+	}
+	
+	public void resetPollCounters() {
 		pollInOctets = 0L;
 		pollOutOctets = 0L;
 	}
@@ -118,6 +122,10 @@ public final class SnmpInterface implements Serializable {
 	}
 
 	public void setIfOperStatus(int ifOperStatus) {
+		// reset counters
+		if (ifOperStatus != 1) {
+			resetPollCounters();
+		}
 		this.ifOperStatus = ifOperStatus;
 	}
 
