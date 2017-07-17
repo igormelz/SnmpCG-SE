@@ -5,17 +5,17 @@ import java.io.Serializable;
 public final class SnmpInterface implements Serializable {
 	private static final long serialVersionUID = 2654773100327667716L;
 	private final String ifDescr;
-	private int ifIndex;
-	private String ifName;
-	private String ifAlias;
-	private int ifAdminStatus;
-	private int ifOperStatus;
-	private boolean polling = true;
+	transient private int ifIndex;
+	transient private String ifName;
+	transient private String ifAlias;
+	transient private int ifAdminStatus;
+	transient private int ifOperStatus;
+	private boolean chargeable = true;
 	private boolean trace = false;
 	private SnmpCounter ifInOctets = new SnmpCounter();
 	private SnmpCounter ifOutOctets = new SnmpCounter();
-	private long pollInOctets;
-	private long pollOutOctets;
+	transient private long pollInOctets;
+	transient private long pollOutOctets;
 	transient private boolean marked = false;
 
 	public SnmpInterface(String ifDescr) {
@@ -45,16 +45,12 @@ public final class SnmpInterface implements Serializable {
 		pollOutOctets = 0L;
 	}
 	
-	public boolean isPolling() {
-		return polling;
+	public boolean isChargeable() {
+		return chargeable;
 	}
 
-	public void setPolling(boolean polling) {
-		// set trace off if not polling IF
-		if (!polling && isTrace()) {
-			trace = false;
-		}
-		this.polling = polling;
+	public void setChargeable(boolean polling) {
+		this.chargeable = polling;
 	}
 
 	public SnmpCounter getIfInOctets() {
