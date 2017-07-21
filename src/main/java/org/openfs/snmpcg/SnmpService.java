@@ -229,6 +229,7 @@ public class SnmpService {
 		if (toremove != null && !toremove.isEmpty()) {
 			for (String ifdescr : toremove) {
 				log.warn("source {}: not found in response ifdescr: {}", source.getIpAddress(), ifdescr);
+				counterService.increment("counter.snmp.logWarn");
 				if (source.getSnmpInterface(ifdescr).isMarked()) {
 					source.removeSnmpInterace(ifdescr);
 					log.info("source {}: remove interface ifdescr: {}",	source.getIpAddress(), ifdescr);
