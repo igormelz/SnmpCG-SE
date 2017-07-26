@@ -1,33 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <routes xmlns="http://camel.apache.org/schema/spring">
 
-	<route id="fileProxy">
-		<from uri="file:in?maxMessagesPerPoll=1&amp;delay=30000" />
-		<split>
-			<tokenize token="\n" />
-			<bean ref="sources" method="parse(${body},';')" />
-		</split>
-		<to uri="direct:pollStatus" />
-	</route>
+	<!-- <route id="fileProxy"> <from uri="file:in?maxMessagesPerPoll=1&amp;delay=30000" 
+		/> <split> <tokenize token="\n" /> <bean ref="sources" method="parse(${body},';')" 
+		/> </split> <to uri="direct:pollStatus" /> </route> -->
 
 	<route id="writeCdrFile">
 		<from uri="direct:writeCdrFile" />
-		<bean ref="sources" method="exportChargingDataRecords" />
-		<filter>
-			<simple>${headers.countChargingDataRecords} != 0</simple>
-			<to uri="file:out/cdr?fileName=${date:now:yyyyMMddHHmmss}.snmp.dat" />
-			<log message="wrote ${headers.countChargingDataRecords} cdr to file: ${headers.CamelFileNameProduced}" />
-		</filter>
+		<to uri="file:out/cdr?fileName=${date:now:yyyyMMddHHmmss}.snmp.dat" />
+		<log message="wrote ${headers.countChargingDataRecords} cdr to file: ${headers.CamelFileNameProduced}" />
 	</route>
 
-	<route id="writeCounterFile">
-		<from uri="direct:writeCounterFile" />
-		<bean ref="sources" method="exportTraceRecords" />
-		<filter>
-			<simple>${headers.countTraceRecords} != 0</simple>
-			<to uri="file:out/trace?fileName=${date:now:yyyyMMddHHmmss}.txt" />
-			<log message="wrote ${headers.countTraceRecords} trace records to file: ${headers.CamelFileNameProduced}" />
-		</filter>
+	<route id="writeTraceCounterFile">
+		<from uri="direct:writeTraceCounterFile" />
+		<to uri="file:out/trace?fileName=${date:now:yyyyMMddHHmmss}.txt" />
+		<log message="wrote ${headers.countTraceRecords} trace records to file: ${headers.CamelFileNameProduced}" />
 	</route>
 
 </routes>
