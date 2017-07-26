@@ -24,10 +24,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Service("snmpService")
-public class SnmpService {
+@Service("snmpPoll")
+public class SnmpPoll {
 
-	private static final Logger log = LoggerFactory.getLogger("SnmpService");
+	private static final Logger log = LoggerFactory.getLogger(SnmpPoll.class);
 
 	private static final long COUNTER32_MAX_VALUE = 4294967295L;
 
@@ -59,7 +59,7 @@ public class SnmpService {
 	private Snmp snmp;
 	
 	@Autowired
-	public SnmpService(CounterService counterService) throws IOException {
+	public SnmpPoll(CounterService counterService) throws IOException {
 		this.counterService = counterService;
 		snmp = new Snmp(new DefaultUdpTransportMapping());
 		snmp.listen();
@@ -68,7 +68,7 @@ public class SnmpService {
 	@Handler
 	public void pollStatus(@Body SnmpSource source) throws Exception {
 		if (log.isDebugEnabled()) {
-			log.debug("source {}: poll status", source.getIpAddress());
+			log.debug("source: {} poll status", source.getIpAddress());
 		}
 
 		long startPollTime = System.currentTimeMillis();
@@ -100,7 +100,7 @@ public class SnmpService {
 		// validate ifNumber
 		if (vbs[4] == null
 				|| (vbs[4] != null && vbs[4].getVariable().toInt() == 0)) {
-			log.warn("source {}: has no interfaces", source.getIpAddress());
+			log.warn("source: {} has no interfaces", source.getIpAddress());
 			counterService.increment("counter.snmp.logWarn");
 			source.setStatus(SnmpSourceStatus.NO_IFTABLE);
 			return;
@@ -117,14 +117,14 @@ public class SnmpService {
 						event -> {
 
 							if (event.getColumns() == null || event.getColumns().length < 6) {
-								log.warn("source {}: no ifTable in response", source.getIpAddress());
+								log.warn("source: {} no ifTable in response", source.getIpAddress());
 								counterService.increment("counter.snmp.logWarn");
 								return;
 							}
 
 							// validate ifDescr
 							if (event.getColumns()[5] == null) {
-								log.warn("source {}: no ifDescr for index:{}", source.getIpAddress(), event.getIndex().get(0));
+								log.warn("source: {} no ifDescr for index: {}", source.getIpAddress(), event.getIndex().get(0));
 								counterService.increment("counter.snmp.logWarn");
 								return;
 							}
@@ -135,13 +135,13 @@ public class SnmpService {
 							updateIfEntry(ifEntry, event);
 							
 						});
-		log.info("source {}: SUCCESS, uptime:{}, ifNumber:{}", source.getIpAddress(), uptime, events.size() - 1);
+		log.info("source: {} update status: SUCCESS, uptime: {}, ifNumber: {}", source.getIpAddress(), uptime, events.size() - 1);
 	}
 
 	@Handler
 	public void pollCounters(@Body SnmpSource source) throws Exception {
 		if (log.isDebugEnabled()) {
-			log.debug("source {}: poll counters", source.getIpAddress());
+			log.debug("source: {} poll counters", source.getIpAddress());
 		}
 
 		long startPollTime = System.currentTimeMillis();
@@ -177,7 +177,7 @@ public class SnmpService {
 
 					// validate ifDescr
 						if (vb == null || vb.length < 1 || vb[1] == null) {
-							log.warn("source {}: no ifDescr for index:{}", source.getIpAddress(), event.getIndex().get(0));
+							log.warn("source: {} no ifDescr for index: {}", source.getIpAddress(), event.getIndex().get(0));
 							counterService.increment("counter.snmp.logWarn");
 							return;
 						}
@@ -194,12 +194,8 @@ public class SnmpService {
 							
 						// calculate delta counters
 						if (!source.isSkipDelta() && ifEntry.isUp()) {
-							ifEntry.setPollInOctets(calcDeltaCounter(
-									source.getIpAddress(), ifdescr, bytes_in,
-									ifEntry.getIfInOctets()));
-							ifEntry.setPollOutOctets(calcDeltaCounter(
-									source.getIpAddress(), ifdescr, bytes_out,
-									ifEntry.getIfOutOctets()));
+							ifEntry.setPollInOctets(calcDeltaCounter(source.getIpAddress(), ifdescr, bytes_in, ifEntry.getIfInOctets()));
+							ifEntry.setPollOutOctets(calcDeltaCounter(source.getIpAddress(), ifdescr, bytes_out, ifEntry.getIfOutOctets()));
 						}
 							
 						// save counter values
@@ -216,7 +212,7 @@ public class SnmpService {
 		}
 
 		if (log.isDebugEnabled()) {
-			log.debug("source {}: poll processed: uptime:{}, ifNumber:{}",
+			log.debug("source: {} uptime: {}, ifNumber: {}",
 					source.getIpAddress(), events.get(0).getColumns()[0]
 							.getVariable().toString(), events.size() - 1);
 		}
@@ -228,11 +224,11 @@ public class SnmpService {
 		// process not existing interfaces
 		if (toremove != null && !toremove.isEmpty()) {
 			for (String ifdescr : toremove) {
-				log.warn("source {}: not found in response ifdescr: {}", source.getIpAddress(), ifdescr);
+				log.warn("source: {} not found in response ifdescr: {}", source.getIpAddress(), ifdescr);
 				counterService.increment("counter.snmp.logWarn");
 				if (source.getSnmpInterface(ifdescr).isMarked()) {
 					source.removeSnmpInterace(ifdescr);
-					log.info("source {}: remove interface ifdescr: {}",	source.getIpAddress(), ifdescr);
+					log.info("source: {} removed interface ifdescr: {}",	source.getIpAddress(), ifdescr);
 				} else {
 					source.getSnmpInterface(ifdescr).setMarked();
 				}
@@ -249,7 +245,7 @@ public class SnmpService {
 
 		// validate timeout
 		if (events.size() == 1 && events.get(0).isError()) {
-			log.error("source {}: {}", source.getIpAddress(), events.get(0).getErrorMessage());
+			log.error("source: {} {}", source.getIpAddress(), events.get(0).getErrorMessage());
 			source.setStatus(SnmpSourceStatus.TIMEOUT);
 			counterService.increment("counter.snmp.logError");
 			return null;
@@ -258,7 +254,7 @@ public class SnmpService {
 		// validate NO PDU
 		if (events == null || events.isEmpty()) {
 			source.setStatus(SnmpSourceStatus.NO_PDU);
-			log.error("source {}: no responsePDU (null)", source.getIpAddress());
+			log.error("source: {} no responsePDU (null)", source.getIpAddress());
 			counterService.increment("counter.snmp.logError");
 			return null;
 		}
@@ -287,32 +283,29 @@ public class SnmpService {
 		return counter;
 	}
 
-	private long calcDeltaCounter(String sourceIpAddr, String ifDescr,
-			SnmpCounter pollCounter, SnmpCounter lastCounter) {
+	private long calcDeltaCounter(String sourceIpAddr, String ifDescr, SnmpCounter pollCounter, SnmpCounter lastCounter) {
 
 		if (pollCounter.getValue() > lastCounter.getValue()) {
 			return pollCounter.getValue() - lastCounter.getValue();
 		}
 
 		if (pollCounter.getValue() == 0 && lastCounter.getValue() > 0) {
-			log.warn("source {}: ifdescr:{} - fake overflow counter: current={} last={}", sourceIpAddr, ifDescr, pollCounter, lastCounter);
+			log.warn("source: {} fake counter overflow on ifdescr '{}' (recv={}, last={})", sourceIpAddr, ifDescr, pollCounter, lastCounter);
 			counterService.increment("counter.snmp.logWarn");
 			return 0L;
 		}
 
-		if (pollCounter.getValue() < lastCounter.getValue()
-				&& pollCounter.getType() == lastCounter.getType()) {
+		if (pollCounter.getValue() < lastCounter.getValue()	&& pollCounter.getType() == lastCounter.getType()) {
 			if (pollCounter.getType() == 32) {
-				log.warn("source {}: ifdescr:{} - overflow counter: current={} last={}", sourceIpAddr, ifDescr, pollCounter, lastCounter);
-				counterService.increment("counter.snmp.logWarn");
+				log.info("source: {} overflow 32bit counter on ifdescr '{}' (recv={}, last={})", sourceIpAddr, ifDescr, pollCounter, lastCounter);
+				counterService.increment("counter.snmp.logInfo");
 				return COUNTER32_MAX_VALUE + pollCounter.getValue() - lastCounter.getValue();
 			} else {
-				log.warn("source {}: ifdescr:{} - overflow 64 bit counter: current={} last={}",	sourceIpAddr, ifDescr, pollCounter, lastCounter);
+				log.warn("source: {} overflow 64bit counter on ifdescr '{}' (recv={}, last={})", sourceIpAddr, ifDescr, pollCounter, lastCounter);
 				counterService.increment("counter.snmp.logWarn");
 				return 0L;
 			}
 		}
-
 		return 0L;
 	}
 
@@ -323,8 +316,7 @@ public class SnmpService {
 
 		// update adminStatus
 		if (event.getColumns()[6] != null) {
-			ifEntry.setIfAdminStatus(event.getColumns()[6].getVariable()
-					.toInt());
+			ifEntry.setIfAdminStatus(event.getColumns()[6].getVariable().toInt());
 		}
 
 		// update operStatus
@@ -345,7 +337,7 @@ public class SnmpService {
 	
 	private boolean validateSkipDelta(SnmpSource source, long sysUptime) {
 		if (source.getSysUptime() != 0 && source.getSysUptime() > sysUptime) {
-			log.warn("source {}: was rebooted. Reset all counter", source.getIpAddress());
+			log.warn("source: {} rebooted. Reset all counters", source.getIpAddress());
 			counterService.increment("counter.snmp.logWarn");
 			// reset Counters and skip calcDelta on next poll
 			source.resetSnmpInterfaceCounters();
