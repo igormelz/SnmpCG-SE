@@ -15,10 +15,10 @@ import org.springframework.stereotype.Component;
 @SpringBootApplication
 public class SnmpCollectorApplication {
 
-	@Value("${snmpcg.minPoolThreads}")
+	@Value("${snmpcg.minPoolThreads:10}")
 	private int poolSize;
 	
-	@Value("${snmpcg.maxPoolThreads}")
+	@Value("${snmpcg.maxPoolThreads:30}")
 	private int maxPoolSize;
 	
 	public static void main(String[] args) {
@@ -97,7 +97,7 @@ public class SnmpCollectorApplication {
 		public void configure() {
 
 			// scheduled poll source status
-			from("timer://validate?period={{snmpcg.validateStatusTimer}}").routeId("pollStatus")
+			from("timer://validate?period={{snmpcg.validateStatusTimer:3m}}").routeId("pollStatus")
 				.split(method("snmpSources", "getDownSources"),new NullAggregationStrategy()).parallelProcessing()
 					.bean("snmpPoll", "pollStatus")
 				.end();
@@ -118,14 +118,14 @@ public class SnmpCollectorApplication {
 			from("direct:storeCdr").routeId("storeCDR")
 				.bean("snmpSources","exportChargingDataRecords")
 				.filter(header("countChargingDataRecords").isGreaterThan(0))
-					.to("{{snmpcg.flushChargingDataRecordEndpoint}}")
+					.to("{{snmpcg.flushChargingDataRecordEndpoint:direct:writeCdrFile}}")
 				.end();
 			
 			// store Trace
 			from("direct:storeTrace").routeId("storeTrace")
 				.bean("snmpSources","exportTraceRecords")
 				.filter(header("countTraceRecords").isGreaterThan(0))
-					.to("{{snmpcg.flushTraceCountersEndpoint}}")
+					.to("{{snmpcg.flushTraceCountersEndpoint:direct:writeTraceCounterFile}}")
 				.end();
 		}
 	}

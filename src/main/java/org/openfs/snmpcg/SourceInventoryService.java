@@ -49,22 +49,22 @@ public class SourceInventoryService {
 
 	private static final Logger log = LoggerFactory.getLogger(SourceInventoryService.class);
 
-	@Value("${snmpcg.snmpCommunity}")
+	@Value("${snmpcg.snmpCommunity:public}")
 	private String community;
 
-	@Value("${snmpcg.snmpTimeout}")
+	@Value("${snmpcg.snmpTimeout:5}")
 	private int timeout;
 
-	@Value("${snmpcg.snmpRetries}")
+	@Value("${snmpcg.snmpRetries:3}")
 	private int retries;
 
-	@Value("${snmpcg.persistFileName}")
+	@Value("${snmpcg.persistFileName:none}")
 	private String persistFileName;
 
-	@Value("${snmpcg.cdrTimeStampFormat}")
+	@Value("${snmpcg.cdrTimeStampFormat:yyyy-MM-dd HH:mm:ss}")
 	private SimpleDateFormat timeStampFormat;
 
-	@Value("${snmpcg.cdrFieldSeparator}")
+	@Value("${snmpcg.cdrFieldSeparator:;}")
 	private String fieldSeparator;
 
 	private Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
@@ -173,8 +173,7 @@ public class SourceInventoryService {
 		}
 
 		addSource(parsedIpAddr, parsedCommunity);
-		log.info("parsed source {}, community [{}]", parsedIpAddr,
-				parsedCommunity);
+		log.info("parsed source {}, community [{}]", parsedIpAddr, parsedCommunity);
 	}
 
 	/**
