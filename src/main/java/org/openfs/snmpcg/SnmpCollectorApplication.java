@@ -45,6 +45,8 @@ public class SnmpCollectorApplication {
 				.bindingMode(RestBindingMode.json);
 			
 			rest("/v1").description("SnmpCG REST service")
+					.consumes("application/json")
+					.produces("application/json")
 				.get("/sources").description("the list sources")
 					.param().name("status").type(RestParamType.query).endParam()
 					.route().routeId("sources-api")
@@ -54,7 +56,7 @@ public class SnmpCollectorApplication {
 					.route().routeId("sources-api-details")
 					.bean("snmpSources","getSource(${header.source})")
 					.endRest()
-				.post("/sources/{source}").description("add source")
+				.post("/sources").description("add source")
 					.route().routeId("sources-api-add")	
 					.bean("snmpSources","addSource")
 					.endRest()

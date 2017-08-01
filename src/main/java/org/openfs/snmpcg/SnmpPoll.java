@@ -134,6 +134,11 @@ public class SnmpPoll {
 
 							updateIfEntry(ifEntry, event);
 							
+							// do not charge if down 
+							if (ifEntry.isDown()) {
+								ifEntry.setChargeable(false);
+							}
+							
 						});
 		log.info("source: {} update status: SUCCESS, uptime: {}, ifNumber: {}", source.getIpAddress(), uptime, events.size() - 1);
 	}
@@ -230,8 +235,14 @@ public class SnmpPoll {
 					source.removeSnmpInterace(ifdescr);
 					log.info("source: {} removed interface ifdescr: {}",	source.getIpAddress(), ifdescr);
 				} else {
-					source.getSnmpInterface(ifdescr).setMarked();
+					source.getSnmpInterface(ifdescr).setMarked(true);
 				}
+			}
+		}
+		// reset marked for processed interfaces
+		for (String ifdescr : processedIF) {
+			if (source.getSnmpInterface(ifdescr).isMarked()) {
+				source.getSnmpInterface(ifdescr).setMarked(false);
 			}
 		}
 	}
@@ -325,7 +336,7 @@ public class SnmpPoll {
 		}
 		
 		// update ifName
-		if (event.getColumns()[8] != null && ifEntry.getIfName() == null) {
+		if (event.getColumns()[8] != null) {
 			ifEntry.setIfName(event.getColumns()[8].getVariable().toString());
 		}
 

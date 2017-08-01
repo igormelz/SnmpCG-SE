@@ -30,11 +30,6 @@ import org.apache.camel.util.FileUtil;
 import org.apache.camel.util.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.snmp4j.CommunityTarget;
-import org.snmp4j.mp.SnmpConstants;
-import org.snmp4j.smi.Address;
-import org.snmp4j.smi.GenericAddress;
-import org.snmp4j.smi.OctetString;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.metrics.CounterService;
@@ -81,62 +76,64 @@ public class SourceInventoryService {
 		this.gaugeSources = gaugeService;
 	}
 	
-	protected SnmpSource addSource(String ipaddr, String community) {
-		if (!IPADDR_PATTERN.matcher(ipaddr).matches()) {
-			log.error("bad format ip addr:", ipaddr);
-			return null;
-		}
-		Address targetAddress = GenericAddress.parse("udp:" + ipaddr + "/161");
-		return addSource(ipaddr, targetAddress, community);
-	}
-
-	protected SnmpSource addSource(String ipaddr, Address targetAddress, String community) {
-		CommunityTarget target = createTarget(targetAddress, community,	retries, timeout);
-		SnmpSource source = new SnmpSource(ipaddr, target);
-		return sources.put(ipaddr, source);
-	}
-
 	@Handler
 	public void addSource(Exchange exchange) {
-	
-		String host = exchange.getIn().getHeader("source", String.class);
-		String sourceCommunity = this.community;	
-		StringBuilder sb = new StringBuilder("source " + host);
-
+		StringBuilder sb = new StringBuilder("add source ");
+		if (exchange.getIn().getBody() == null) {
+			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
+			sb.append(" fail. No payload defined");
+			exchange.getIn().setBody(Collections.singletonMap("Status", sb.toString()));
+			return;
+		}
+		
+		@SuppressWarnings("unchecked")
+		Map<String, Object> data = (Map<String, Object>) exchange.getIn().getBody(Map.class);
+		
+		if (data == null || !data.containsKey("ipaddr")) {
+			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
+			sb.append(" fail. No ipaddr defined");
+			exchange.getIn().setBody(Collections.singletonMap("Status", sb.toString()));
+			return;
+		}
+		
+		String host = data.get("ipaddr").toString();
+		if (!IPADDR_PATTERN.matcher(host).matches()) {
+			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
+			sb.append(host).append(" fail. No vaild ipaddr");
+			exchange.getIn().setBody(Collections.singletonMap("Status", sb.toString()));
+			return;
+		}
+		
 		if (sources.containsKey(host)) {
 			exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
-			sb.append(" allready exists");
+			sb.append(host).append(" allready exists");
 			exchange.getIn().setBody(Collections.singletonMap("Status", sb.toString()));
 			return;
 		} 
-			
-		if (exchange.getIn().getHeader("CamelHttpQuery") != null) {
-				sourceCommunity = exchange.getIn().getHeader("CamelHttpQuery",
-						String.class);
-		} else if (exchange.getIn().getBody() != null) {
-				@SuppressWarnings("unchecked")
-				Map<String, String> mb = (Map<String, String>) exchange.getIn()
-						.getBody(Map.class);
-				if (mb != null && mb.containsKey("Community")) {
-					sourceCommunity = mb.get("Community");
-				}
+		
+		String hostCommunity = community;
+		if (data.get("community") != null && !data.get("community").toString().isEmpty()) {
+			hostCommunity = data.get("community").toString();
 		}
-	
-		addSource(host, sourceCommunity);
-		sb.append(" add to next poll with community:").append(sourceCommunity);
-		exchange.getIn().setBody(Collections.singletonMap("Status", sb.toString()));		
-		log.info(sb.toString());
-	}
-
-	protected CommunityTarget createTarget(Address targetAddress,
-			String community, int retries, int timeout) {
-		CommunityTarget target = new CommunityTarget();
-		target.setCommunity(new OctetString(community));
-		target.setVersion(SnmpConstants.version2c);
-		target.setAddress(targetAddress);
-		target.setRetries(retries);
-		target.setTimeout(timeout * 1000L);
-		return target;
+		
+		int hostRetries = retries;
+		if (data.get("retries") != null) {
+			hostRetries = (int) data.get("retries");
+		}
+		
+		int hostTimeout = timeout;
+		if (data.get("timeout") != null) {
+			hostTimeout = (int) data.get("timeout");
+		}
+		
+		SnmpSource source = new SnmpSource(host,hostCommunity,hostRetries,hostTimeout);
+		if (source != null) {
+			sources.put(host,source);
+			sb.append(host).append(" to next poll with community:").append(hostCommunity);
+			exchange.getIn().setBody(Collections.singletonMap("Status", sb.toString()));		
+			log.info(sb.toString());
+		}
+		
 	}
 
 	@Handler
@@ -149,32 +146,6 @@ public class SourceInventoryService {
 		return sources.values().stream().filter(source -> source.getStatus().isDown()).collect(Collectors.toList());
 	}
 
-	public void parse(String source, String delimiter) {
-
-		if (source == null || source.isEmpty()) {
-			return;
-		}
-
-		// parse ip<delimiter>community
-		String[] values = source.trim().split(delimiter, 2);
-		String parsedIpAddr = values[0];
-		String parsedCommunity = (values.length > 1 && !values[1].isEmpty()) ? values[1]
-				: community;
-
-		if (!IPADDR_PATTERN.matcher(parsedIpAddr).matches()) {
-			log.error("wrong IPADDR for source:" + parsedIpAddr);
-			return;
-		}
-
-		// warn if source duplicate
-		if (sources.containsKey(parsedIpAddr)) {
-			log.warn("duplicate ipaddr: " + parsedIpAddr);
-			return;
-		}
-
-		addSource(parsedIpAddr, parsedCommunity);
-		log.info("parsed source {}, community [{}]", parsedIpAddr, parsedCommunity);
-	}
 
 	/**
 	 * processing REST /api/sources?queryString

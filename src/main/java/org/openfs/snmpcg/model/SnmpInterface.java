@@ -10,7 +10,7 @@ public final class SnmpInterface implements Serializable {
 	transient private String ifAlias;
 	transient private int ifAdminStatus;
 	transient private int ifOperStatus;
-	private boolean chargeable = true;
+	private boolean chargeable = false;
 	private boolean trace = false;
 	private SnmpCounter ifInOctets = new SnmpCounter();
 	private SnmpCounter ifOutOctets = new SnmpCounter();
@@ -145,7 +145,7 @@ public final class SnmpInterface implements Serializable {
 		return marked;
 	}
 
-	public void setMarked() {
-		this.marked = true;
+	public void setMarked(boolean mark) {
+		this.marked = mark;
 	}
 }

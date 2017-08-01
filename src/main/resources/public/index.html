@@ -33,7 +33,7 @@
       	<!-- brand -->
         <div class="navbar-header">
          <a class="navbar-brand" href="index.html">SnmpCG</a>
-        </div>  
+        </div>
         <!-- nav links -->
         <ul class="nav navbar-nav">
           <li class="active"><a href="index.html">Sources</a></li>
@@ -42,7 +42,7 @@
       </div>
       <!-- /.container -->
     </nav>
-    
+
     <!-- page content -->
     <div class="container">
     	<div class="row">
@@ -86,7 +86,7 @@
             </tr>
           </thead>
           <tbody>
-          </tbody>  
+          </tbody>
         </table>
         </div>
 
@@ -115,12 +115,12 @@
      			</div>
       			<div class="modal-footer">
       				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-        			<button class="btn btn-primary" type="submit" data-dismiss="modal" onclick="addSource()">Add source</button> 
+        			<button class="btn btn-primary" type="submit" data-dismiss="modal" onclick="addSource()">Add source</button>
       			</div>
       			</form>
     			</div>
   			</div>
-		</div> 
+		</div>
 
 		<div class="modal fade" id="myRemModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
   			<div class="modal-dialog" role="document">
@@ -138,7 +138,7 @@
       			</div>
     			</div>
   			</div>
-		</div> 
+		</div>
 
 
     </div>
@@ -154,7 +154,7 @@
         	fillCounter();
         	dt.ajax.reload();
         }
-        //clear input 
+        //clear input
         //$('#new_source').val('');
         //$('#community').val('');
       }
@@ -166,24 +166,43 @@
 			$('#community').prop('disabled', false);
 		}
 	 });
-	 
+
       function addSource() {
         var source = $('#new_source').val();
         var community = $('#community').val();
-        var queryStr = '';
-        if (community != null && community != '') {
-        	queryStr = "?"+community;       
-        }
+        var retries = $('#retries').val();
+        var timeout = $('#timeout').val();
+        //var queryStr = '';
+        //if (community != null && community != '') {
+        //	queryStr = "?"+community;
+        //}
+
         if (validateIPaddress(source)) {
+          //var jsonData = JSON.stringify({"ipaddr":source, "community":action});
+          var jsonData = "{\"ipaddr\":\""+source+"\"";
+          if (community != null && community != '') {
+            jsonData += ",\"community\":\""+community+"\"";
+          }
+          if (retries != null && retries != '') {
+            jsonData += ",\"retries\":"+parseInt(retires)+"";
+          }
+          if (timeout != null && timeout != '') {
+            jsonData += ",\"timeout\":"+parseInt(timeout)+"";
+          }
+          jsonData += "}";
+          
+          console.log("add source: "+jsonData);
           $.ajax({
-            url: "/api/v1/sources/"+source+queryStr,
+            url: "/api/v1/sources", //+source+queryStr,
             type: 'POST',
+            contentType: "application/json",
+            data: jsonData,
             success: showNotif
           });
         } else {
           showNotif({"Status" : "Wrong IP format: " + source});
         }
-      }      
+      }
 
       function deleteSource() {
         var source = $('#ipToRemove').val();
@@ -203,9 +222,9 @@
           url: "/api/v1/sources?stats",
           success: function(stats) {
       			var suc = (stats.SUCCESS)?parseInt(stats.SUCCESS):0;
-          		var tim = (stats.TIMEOUT)?parseInt(stats.TIMEOUT):0; 
-          		var unk = (stats.UNKNOWN)?parseInt(stats.UNKNOWN):0;       		
-          		var np = (stats.NO_PDU)?parseInt(stats.NO_PDU):0;       		
+          		var tim = (stats.TIMEOUT)?parseInt(stats.TIMEOUT):0;
+          		var unk = (stats.UNKNOWN)?parseInt(stats.UNKNOWN):0;
+          		var np = (stats.NO_PDU)?parseInt(stats.NO_PDU):0;
           		var nif = (stats.NO_IFTABLE)?parseInt(stats.NO_IFTABLE):0;
           		$('#allVal').text(suc+tim+unk+np+nif);
           		$('#successVal').text(suc);
@@ -237,7 +256,7 @@
              		source.Status = "<span class=\"label label-warning small\">"+source.Status+"</span>";
              		break;
              case 'UNKNOWN':
-             		source.Status = "<span class=\"label label-default small\">"+source.Status+"</span> ";          		
+             		source.Status = "<span class=\"label label-default small\">"+source.Status+"</span> ";
             }
             source.SourceInfo = source.viewIF;
             source.SourceInfo += (source.sysName)?source.sysName+" ["+source.Ip+"]":source.Ip;
@@ -271,10 +290,10 @@
 		    +"<button type=\"button\" class=\"btn btn-default btn-sm\" onclick=\"askRemove('"+source.Ip+"')\"><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> Remove</button>"
 			  +"</li></ul>";
 	}
-	
+
 	// Array to track the ids of the details displayed rows
     var detailRows = [];
-    
+
 	$('#ifTable tbody').on( 'click', 'tr td.detail' , function () {
         var tr = $(this).closest('tr');
         var row = dt.row( tr );
@@ -294,7 +313,7 @@
 
       $('#filter_all').on('click', function () {
       	fillCounter();
-        dt.ajax.url('/api/v1/sources').load();  
+        dt.ajax.url('/api/v1/sources').load();
       });
       $('#filter_success').on('click', function () {
       	fillCounter();
@@ -302,23 +321,23 @@
       });
       $('#filter_timeout').on('click', function () {
       	fillCounter();
-        dt.ajax.url('/api/v1/sources?status=TIMEOUT').load();  
+        dt.ajax.url('/api/v1/sources?status=TIMEOUT').load();
       });
       $('#filter_unknown').on('click', function () {
       	fillCounter();
-        dt.ajax.url('/api/v1/sources?status=UNKNOWN').load(); 
+        dt.ajax.url('/api/v1/sources?status=UNKNOWN').load();
       });
       $('#filter_nopdu').on('click', function () {
       	fillCounter();
-        dt.ajax.url('/api/v1/sources?status=NO_PDU').load(); 
+        dt.ajax.url('/api/v1/sources?status=NO_PDU').load();
       });
       $('#filter_noif').on('click', function () {
       	fillCounter();
-        dt.ajax.url('/api/v1/sources?status=NO_IFTABLE').load(); 
+        dt.ajax.url('/api/v1/sources?status=NO_IFTABLE').load();
       });
       // onLoad
       fillCounter();
-      
+
       function askRemove(ip) {
       	console.log("try to remove:"+ip);
         jQuery.noConflict();
@@ -326,7 +345,7 @@
         $("#myRemModal").find('.modal-footer input').val(ip);
       	$("#myRemModal").modal();
       }
-      
+
     </script>
   </body>
 </html>
