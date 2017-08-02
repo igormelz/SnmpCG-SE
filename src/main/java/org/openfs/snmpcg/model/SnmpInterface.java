@@ -146,6 +146,10 @@ public final class SnmpInterface implements Serializable {
 	}
 
 	public void setMarked(boolean mark) {
+		// reset counters
+		if (mark) {
+			resetPollCounters();
+		}
 		this.marked = mark;
 	}
 }
