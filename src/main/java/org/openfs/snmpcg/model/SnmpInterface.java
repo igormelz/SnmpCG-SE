@@ -5,17 +5,18 @@ import java.io.Serializable;
 public final class SnmpInterface implements Serializable {
 	private static final long serialVersionUID = 2654773100327667716L;
 	private final String ifDescr;
-	private int ifIndex;
-	private String ifName;
-	private String ifAlias;
-	private int ifAdminStatus;
-	private int ifOperStatus;
-	private boolean polling = true;
-	private boolean trace = true;
+	transient private int ifIndex;
+	transient private String ifName;
+	transient private String ifAlias;
+	transient private int ifAdminStatus;
+	transient private int ifOperStatus;
+	private boolean chargeable = false;
+	private boolean trace = false;
 	private SnmpCounter ifInOctets = new SnmpCounter();
 	private SnmpCounter ifOutOctets = new SnmpCounter();
-	private long pollInOctets;
-	private long pollOutOctets;
+	transient private long pollInOctets;
+	transient private long pollOutOctets;
+	transient private boolean marked = false;
 
 	public SnmpInterface(String ifDescr) {
 		this.ifDescr = ifDescr;
@@ -26,34 +27,30 @@ public final class SnmpInterface implements Serializable {
 	}
 
 	public void setIfAdminStatus(int ifAdminStatus) {
-		// reset counters and set polling off
+		// reset counters
 		if (ifAdminStatus != 1) {
-			resetIfCounters();
 			resetPollCounters();
 		}
 		this.ifAdminStatus = ifAdminStatus;
 	}
 
-	public void resetIfCounters() {
+	public void resetCounters() {
 		ifInOctets.reset();
 		ifOutOctets.reset();
+		resetPollCounters();
 	}
-
+	
 	public void resetPollCounters() {
 		pollInOctets = 0L;
 		pollOutOctets = 0L;
 	}
 	
-	public boolean isPolling() {
-		return polling;
+	public boolean isChargeable() {
+		return chargeable;
 	}
 
-	public void setPolling(boolean polling) {
-		// set trace off if not polling IF
-		if (!polling && isTrace()) {
-			trace = false;
-		}
-		this.polling = polling;
+	public void setChargeable(boolean polling) {
+		this.chargeable = polling;
 	}
 
 	public SnmpCounter getIfInOctets() {
@@ -121,6 +118,10 @@ public final class SnmpInterface implements Serializable {
 	}
 
 	public void setIfOperStatus(int ifOperStatus) {
+		// reset counters
+		if (ifOperStatus != 1) {
+			resetPollCounters();
+		}
 		this.ifOperStatus = ifOperStatus;
 	}
 
@@ -132,4 +133,23 @@ public final class SnmpInterface implements Serializable {
 		this.ifIndex = ifIndex;
 	}
 
+	public boolean isUp() {
+		return ifAdminStatus == 1 && ifOperStatus == 1;
+	}
+
+	public boolean isDown() {
+		return !isUp();
+	}
+	
+	public boolean isMarked() {
+		return marked;
+	}
+
+	public void setMarked(boolean mark) {
+		// reset counters
+		if (mark) {
+			resetPollCounters();
+		}
+		this.marked = mark;
+	}
 }

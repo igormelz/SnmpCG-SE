@@ -14,6 +14,13 @@
     <link href="css/vendor/bootstrap.min.css" rel="stylesheet">
     <link href="css/dataTables.bootstrap.min.css" rel="stylesheet">
 
+    <script src="js/vendor/jquery.min.js"></script>
+    <script src="js/vendor/bootstrap.min.js"></script>
+    <script src="js/vendor/datatables.min.js"></script>
+    <!-- script src="js/jquery.dataTables.min.js"></script -->
+    <script src="js/vendor/dataTables.bootstrap.min.js"></script>
+    <script src="js/script.js"></script>
+
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
     <!--[if lt IE 9]>
       <script src="js/vendor/html5shiv.js"></script>
@@ -28,68 +35,81 @@
         </div>
         <ul class="nav navbar-nav">
           <li><a href="index.html">Sources</a></li>
+          <li><a href="counters.html">PollCounters</a></li>
         </ul>
-        <button id="removeBtn" type="button" class="btn btn-primary navbar-btn navbar-right" onclick="delSource()">Remove</button>
       </div>
     </nav>
     <!-- page content -->
     <div class="container">
-        	<h2>Source <span id="address"></span></h2>
-			<h5>last poll @ <span id="updated"></span></h5>
-		<div class="panel panel-default">
-  			<div class="panel-heading"><span id="status" class="label"></span> <span id="sysName"></span></div>
-  			<div class="panel-body">
-    			<span id="sysDescr" class="small"></span>
-  			</div>
+        <div id="responseMsg" class="alert alert-info alert-dismissible hidden" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <span id="responseBody"></span>
+        </div>
+	    <div class="row">		
+  			<h4><span class="glyphicon glyphicon-list" aria-hidden="true"></span> <span id="sysName"></span> [<span id="ipaddr"></span>]</h4>
+  			<label>Last poll:</label> <span id="updated"></span>
 			<ul class="list-group">
-				<li class="list-group-item small"><label>Uptime:</label><span id="sysUptime"></span></li>
-				<li class="list-group-item">
-				<div class="btn-group-sm" data-toggle="buttons">
-        		<btn type="radio" class="btn btn-default" id="ifAll">ifNumber: <span id="ifNumber" class="badge info"></span></btn>
-        		<btn type="radio" class="btn btn-success" id="ifUp">ifNumberUp <span id="pollUp" class="badge info">0</span></btn>
-        		<btn type="radio" class="btn btn-warning" id="ifDown">ifNumberDown <span id="pollDown" class="badge info">0</span></btn>
-        		</div>
+			<!-- filters -->
+				<li class="list-group-item small">
+				<div class="btn-group btn-group-sm" role="group" aria-label="View">
+        			<button title="view ifup" type="button" class="btn btn-info" id="ifStatusUp">
+        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+        				Up <span id="statusUpCount" class="badge">0</span>
+        			</button>
+        			<button title="view ifdown" type="button" class="btn btn-warning" id="ifStatusDown">
+        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+        				Down <span id="statusDownCount" class="badge">0</span>
+        			</button>
+        			<button title="view chargeable" type="button" class="btn btn-success" id="ifChargeable">
+        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+        				Chargeable <span id="chargeableCount" class="badge">0</span>
+        			</button>
+        			<button title="view trace" type="button" class="btn btn-info" id="ifTraced">
+        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+        				Trace <span id="traceCount" class="badge">0</span>
+        			</button>
+        			<button title="view all" type="button" class="btn btn-default" id="ifNumber">
+        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+        				ifNumber <span id="ifNumberCount" class="badge"></span>
+        			</button>
+        		</div></li>
         	</ul>
-		</div>
+		
 		<table id="ifTable" class="table table-condensed">
           <thead>
             <tr>
-              <th></th>
-              <th>ifIndex</th>
-              <th>ifDescr</th>
-              <th>pollStatus</th>
-              <th>in_bytes</th>
-              <th>out_bytes</th>
+              <td></td>
+              <td></td>
+              <td>ifDescr</td>
+              <td>Mbps In</td>
+              <td>Mbps Out</td>
+              <td>bytes In</td>
+              <td>bytes Out</td>
+              <td><button title="apply to all" type="button" class="btn btn-success btn-xs" id="chargeableOn">
+        				<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> On</button>
+        		   <button title="apply to all" type="button" class="btn btn-default btn-xs" id="chargeableOff">
+        		   		<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> Off</button>
+        	  </td>
+        	  <td><button title="apply to all" type="button" class="btn btn-info btn-xs" id="traceOn">
+        	    		<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> On</button>
+        		  <button title="apply to all" type="button" class="btn btn-default btn-xs" id="traceOff">
+        				<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> Off</button>      
+        	  </td>
             </tr>
           </thead>
           <tbody>
           </tbody>  
         </table>
-		</div>
+	  </div>		
     </div>
     <!-- /.container -->
-
-    <!-- jQuery (necessary for Flat UI's JavaScript plugins) -->
-    <script src="js/vendor/jquery.min.js"></script>
-    <!-- Include all compiled plugins (below), or include individual files as needed -->
-    <script src="js/datatables.min.js"></script>
-    <!-- script src="js/jquery.dataTables.min.js"></script -->
-    <script src="js/dataTables.bootstrap.min.js"></script>
+    
     <script>
-        function getUrlParameter(sParam) {
-            var sPageURL = window.location.search.substring(1);
-            var sURLVariables = sPageURL.split('&');
-            for (var i = 0; i < sURLVariables.length; i++) {
-                var sParameterName = sURLVariables[i].split('=');
-                if (sParameterName[0] == sParam) {
-                    return sParameterName[1];
-                }
-            }
-        }
 
     var ip = getUrlParameter("ip");
-    $("#address").text(ip);
-    $("#removeBtn").text("Remove "+ip);
+    $("#ipaddr").text(ip);
+    //$("#address").text(ip);
+    //$("#removeBtn").text("Remove "+ip);
     
     function delSource() {
     	$.ajax({
@@ -101,93 +121,83 @@
 		});
     }
     
-    function pad(v) {
-    	return v<10?"0"+v:v;
-    }
-    
-    function uptime(timeticks) {
-    	var tt = timeticks;
-    	var d = Math.floor(tt / 8640000);
-    	tt %= 8640000;
-    	var h = Math.floor(tt / 360000);
-    	tt %= 360000;
-    	var m = Math.floor(tt / 6000);
-    	tt %= 6000;
-    	var s= Math.floor( tt / 100);
-    	tt %= 100;
-    	return d+" days, "+pad(h)+":"+pad(m)+":"+pad(s)+"."+tt; 
-    }
-    
-    $.ajax({
+    function getSourceInfo() {
+    	$.ajax({
     	url: "/api/v1/sources/"+ip,
     	success: function(source){
-    		$("#status").text(source.Status);
-    		if (source.Status == 'UNKNOWN') {
-            	$("#status").addClass("label-default");
-            } 
-            else {
-    			$("#updated").text(new Date(source.pollTime).toLocaleString());
- 				if (source.Status == 'SUCCESS') {
-            		$("#status").addClass("label-success");
-            	} 
-            	if (source.Status == 'TIMEOUT') {
-            		$("#status").addClass("label-danger");
-           		}
-            	if (source.Status == 'NO_PDU' || source.Status == 'NO_IFTABLE') {
-            		$("#status").addClass("label-warning");
-            	}            
-            	if (source.sysName) {
-            		$("#sysName").text(source.sysName);
-            		$("#ifNumber").text(source.ifNumber);
-            		$("#sysUptime").text(uptime(source.sysUptime));
-            		$("#sysDescr").text(source.sysDescr);
-            		$("#pollUp").text(source.pollStatusUp);
-            		$("#pollDown").text(source.pollStatusDown);
-            	}
-            }
+    		$("#updated").text(new Date(source.pollTime).toLocaleString());
+            $("#sysName").text(source.sysName);
+            $("#ifNumberCount").text(source.ifNumber);
+            $("#sysUptime").text(uptime(source.sysUptime));           
+            $("#statusUpCount").text(source.statusUpCounter);
+            $("#statusDownCount").text(source.statusDownCounter);
+            $("#chargeableCount").text(source.chargeableCounter);
+            $("#traceCount").text(source.traceCounter);
          }
-    });
-       
+    	});
+    }
+    
  	var dt = $('#ifTable').DataTable({
        ajax: {
-        url: "/api/v1/sources/"+ip+"/interfaces",
+        url: "/api/v1/sources/"+ip+"/interfaces?status=up",
         //dataSrc: '' 
         dataSrc: function(ifTable) {
           ifTable.forEach(function(ifEntry){
-          	//ifEntry.ifDescr = "<span class=\"glyphicon glyphicon-collapse-down\" aria-hidden=\"true\"></span> "+ifEntry.ifDescr;
+          	if(ifEntry.chargeable) {
+            	ifEntry.actionCharge="<a title=\"click to uncharge\" class=\"label label-success\" onclick=\"updateIfchargeable('"+ifEntry.ifDescr+"',"+(!ifEntry.chargeable)+")\">";
+            	ifEntry.actionCharge+="<span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> charge</a>";
+            } else {
+            	ifEntry.actionCharge="<a title=\"click to charge\" class=\"label label-default\" onclick=\"updateIfchargeable('"+ifEntry.ifDescr+"',"+(!ifEntry.chargeable)+")\">";
+            	ifEntry.actionCharge+="<span class=\"glyphicon glyphicon-ok\" aria-hidden=\"true\"></span> charge</a>";
+            }
+            if(ifEntry.trace){
+            	ifEntry.actionTrace="<a title=\"click to untrace\" class=\"label label-info\" onclick=\"updateIftrace('"+ifEntry.ifDescr+"',"+(!ifEntry.trace)+")\">";
+            	ifEntry.actionTrace+="<span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> trace</a>";
+            }else{
+        		ifEntry.actionTrace="<a title=\"click to trace\" class=\"label label-default\" onclick=\"updateIftrace('"+ifEntry.ifDescr+"',"+(!ifEntry.trace)+")\">";
+            	ifEntry.actionTrace+="<span class=\"glyphicon glyphicon-ok\" aria-hidden=\"true\"></span> trace</a>"; 
+            }          
+            ifEntry.status = (ifEntry.up)?"<label class=\"label label-info\">up</label> ":"<label class=\"label label-warning\">down</label> ";
           	ifEntry.ifDescr += (ifEntry.ifAlias)?" ("+ifEntry.ifAlias+")":"";
-            ifEntry.pollStatus = (ifEntry.ifAdminStatus==1 && ifEntry.ifOperStatus==1)?"<span class=\"text-info\">up</span>":"<span class=\"text-danger\">down</span>";
-            ifEntry.bytes_in = Number.parseInt(ifEntry.pollInOctets).toLocaleString('en-EN');
-            ifEntry.bytes_out = Number.parseInt(ifEntry.pollOutOctets).toLocaleString('en-EN');
-            //console.log();
+          	//ifEntry.action = actionCharge + actionTrace;
+            ifEntry.rate_in = bandwidth(ifEntry.pollInOctets,30000);
+            ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets);
+            ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets);
+            ifEntry.rate_out = bandwidth(ifEntry.pollOutOctets,30000);
           });
           return ifTable;
         }
        },
        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
        columns: [
-       	{ "class":"detail","orderable":false,"data":null,
-          "defaultContent": "<span class=\"glyphicon glyphicon-collapse-down\" aria-hidden=\"true\"></span>"},
-        { data:"ifIndex" },
-       	{ data:"ifDescr" },
-       	//{ data: "ifName" },
-       	{ data: "pollStatus" },
-       	{ data: "bytes_in" },
-       	{ data: "bytes_out" }
+        { "class":"detail","orderable":false,"data":null,
+          "defaultContent": "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-right\" aria-hidden=\"true\"></span>"},
+       	{ data: "status" },
+       	{ data:"ifDescr" },    	
+        { data: "rate_in","searchable":false },
+        { data: "rate_out","searchable":false },
+        { data: "bytes_in","orderable":false,"searchable":false },
+        { data: "bytes_out","orderable":false,"searchable":false },
+        { data:"actionCharge","orderable":false,"searchable":false },
+        { data:"actionTrace","orderable":false,"searchable":false }
        ],
-       "order": [[1, 'asc']]
+       "order": [[3, 'desc']]
     });
 
 	function ifstatus(s) {
 		if (s == 1) return "(<b>up</b>)";
 		return "(<b>down</b>)";
 	}
+	
 	function format(d) {
-		return "<pre>ifAdminStatus="+d.ifAdminStatus+ifstatus(d.ifAdminStatus==1)
-			+" ifOperStatus="+d.ifOperStatus+ifstatus(d.ifOperStatus)
-			+" ifInOctets=<b>"+d.ifInOctets.value+"</b> type="+d.ifInOctets.type
-			+" ifOutOctets=<b>"+d.ifOutOctets.value+"</b> type="+d.ifOutOctets.type
-			+"</pre>";
+		return "<ul>"
+		    +"<li> ifIndex: <b>"+d.ifIndex+"</b>"
+			+"<li> ifName: <b>"+d.ifName+"</b>"
+			+"<li> ifAdminStatus: "+d.ifAdminStatus+ifstatus(d.ifAdminStatus)
+			+"<li> ifOperStatus: "+d.ifOperStatus+ifstatus(d.ifOperStatus)
+			+"<li> ifInOctets["+d.ifInOctets.type+"]: "+d.ifInOctets.value 
+			+"<li> ifOutOctets["+d.ifOutOctets.type+"]: "+d.ifOutOctets.value
+			+"</ul>";
 	}
 	
 	// Array to track the ids of the details displayed rows
@@ -195,18 +205,14 @@
     
 	$('#ifTable tbody').on( 'click', 'tr td.detail' , function () {
         var tr = $(this).closest('tr');
-        var btn = $(this).children();
+        //var btn = $(this).children();
         var row = dt.row( tr );
         var idx = $.inArray( tr.attr('id'), detailRows );
         if ( row.child.isShown() ) {
-        	btn.removeClass('glyphicon-collapse-up');
-        	btn.addClass('glyphicon-collapse-down');
             row.child.hide();
             // Remove from the 'open' array
             detailRows.splice( idx, 1 );
         } else {
-       		btn.removeClass('glyphicon-collapse-down');
-        	btn.addClass('glyphicon-collapse-up');
         	row.child( format( row.data() ) ).show();
  
             // Add to the 'open' array
@@ -216,15 +222,99 @@
         }
     } );
     
-    $('#ifUp').on('click', function () {
-        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?pollStatus=up" ).load();  
+    
+    $('#ifStatusUp').on('click', function() {
+    	dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?status=up" ).load();
     });
-    $('#ifDown').on('click', function () {
-        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?pollStatus=down" ).load();  
+    
+    $('#ifStatusDown').on('click', function() {
+    	dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?status=down" ).load();
     });
-    $('#ifAll').on('click', function () {
+    
+    $('#ifChargeable').on('click', function () {
+        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?chargeable=on" ).load();  
+    });
+    $('#ifTraced').on('click', function () {
+        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?trace=on" ).load();  
+    });
+    
+    $('#ifNumber').on('click', function () {
         dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces" ).load();  
     });
+    
+   function getifdescr(str) {
+   		return str.replace(/ \(.*$/,'');
+   }
+    
+    $('#traceOn').on('click', function () {
+    		var batchIF = [];
+    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
+    			batchIF.push(getifdescr(idx));
+    		});
+    		updateIftrace(batchIF, true);
+    });
+    
+   $('#traceOff').on('click', function () {
+    		var batchIF = [];
+    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
+    			batchIF.push(getifdescr(idx));
+    		});
+    		updateIftrace(batchIF, false);
+    });
+    
+   $('#chargeableOn').on('click', function () {
+    		var batchIF = [];
+    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
+    			batchIF.push(getifdescr(idx));
+    		});
+    		updateIfchargeable(batchIF, true);
+    });
+    
+   $('#chargeableOff').on('click', function () {
+    		var batchIF = [];
+    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
+    			batchIF.push(getifdescr(idx));
+    		});
+    		updateIfchargeable(batchIF, false);
+    });
+    
+   function showNotif(message) {
+        $('#responseBody').text(message.Status);
+        $('#responseMsg').removeClass('hidden');
+        setTimeout(function(){ $('#responseMsg').addClass('hidden'); }, 1000);
+    }  
+    
+    function updateIftrace(ifdescr,action) {
+    	var jsonData = JSON.stringify({"ifDescr":ifdescr, "trace":action});
+    	console.log("update trace: "+jsonData);
+    	$.ajax({
+    		url: "/api/v1/sources/"+ip+"/interfaces",
+    		type: "PUT",
+    		contentType: "application/json",
+    		data: jsonData,
+    		success: function(result) {
+    			dt.ajax.reload();
+    			getSourceInfo();
+    			showNotif(result);
+    		}
+		});
+    }
+    function updateIfchargeable(ifdescr,action) {
+    	var jsonData = JSON.stringify({"ifDescr":ifdescr, "chargeable":action});
+    	console.log("update chargable: "+jsonData);
+    	$.ajax({
+    		url: "/api/v1/sources/"+ip+"/interfaces",
+    		type: "PUT",
+    		contentType: "application/json",
+    		data: jsonData,
+    		success: function(result) {
+    			dt.ajax.reload();
+    			getSourceInfo();
+    			showNotif(result);
+    		}
+		});
+    }
+    getSourceInfo();
     
     </script>
   </body>
