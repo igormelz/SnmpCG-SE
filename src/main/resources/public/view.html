@@ -1,321 +1,419 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon'/>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="">
+<meta name="author" content="">
+<link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon' />
 
-    <title>SnmpCG - Admin Interface</title>
+<title>SnmpCG - Admin Interface</title>
 
-    <!-- Bootstrap Core CSS -->
-    <link href="css/vendor/bootstrap.min.css" rel="stylesheet">
-    <link href="css/dataTables.bootstrap.min.css" rel="stylesheet">
+<!-- Bootstrap Core CSS -->
+<link href="css/vendor/bootstrap.min.css" rel="stylesheet">
+<link href="css/dataTables.bootstrap.min.css" rel="stylesheet">
+<link href="css/style.css" rel="stylesheet" />
 
-    <script src="js/vendor/jquery.min.js"></script>
-    <script src="js/vendor/bootstrap.min.js"></script>
-    <script src="js/vendor/datatables.min.js"></script>
-    <!-- script src="js/jquery.dataTables.min.js"></script -->
-    <script src="js/vendor/dataTables.bootstrap.min.js"></script>
-    <script src="js/script.js"></script>
+<script src="js/vendor/jquery.min.js"></script>
+<script src="js/vendor/bootstrap.min.js"></script>
+<script src="js/vendor/datatables.min.js"></script>
+<!-- script src="js/jquery.dataTables.min.js"></script -->
+<script src="js/vendor/dataTables.bootstrap.min.js"></script>
+<script src="js/script.js"></script>
 
-    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
-    <!--[if lt IE 9]>
+<!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+<!--[if lt IE 9]>
       <script src="js/vendor/html5shiv.js"></script>
       <script src="js/vendor/respond.min.js"></script>
     <![endif]-->
-  </head>
-  <body>
-    <nav class="navbar navbar-default">
-      <div class="container">
-        <div class="navbar-header">
-          <a class="navbar-brand" href="index.html">SnmpCG</a>
-        </div>
-        <ul class="nav navbar-nav">
-          <li><a href="index.html">Sources</a></li>
-          <li><a href="counters.html">PollCounters</a></li>
-        </ul>
-      </div>
-    </nav>
-    <!-- page content -->
-    <div class="container">
-        <div id="responseMsg" class="alert alert-info alert-dismissible hidden" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            <span id="responseBody"></span>
-        </div>
-	    <div class="row">		
-  			<h4><span class="glyphicon glyphicon-list" aria-hidden="true"></span> <span id="sysName"></span> [<span id="ipaddr"></span>]</h4>
-  			<label>Last poll:</label> <span id="updated"></span>
+</head>
+<body>
+	<nav class="navbar navbar-default">
+		<div class="container">
+			<div class="navbar-header">
+				<a class="navbar-brand" href="index.html">SnmpCG</a>
+			</div>
+			<ul class="nav navbar-nav">
+				<li><a href="index.html">Sources</a></li>
+				<li><a href="counters.html">PollCounters</a></li>
+			</ul>
+			<ul class="nav navbar-nav navbar-right">
+			<li><a href="cluster.html">Node status: <strong id="clusterInfo"></strong></a></li>
+			</ul>
+		</div>
+	</nav>
+	<!-- page content -->
+	<div class="container">
+		<div class="row">
+			<h4>
+				<span class="glyphicon glyphicon-list" aria-hidden="true"></span> <span
+					id="sysName"></span> [<span id="ipaddr"></span>]
+			</h4>
+			<label>Last poll:</label> <span id="updated"></span>
 			<ul class="list-group">
-			<!-- filters -->
+				<!-- filters -->
 				<li class="list-group-item small">
-				<div class="btn-group btn-group-sm" role="group" aria-label="View">
-        			<button title="view ifup" type="button" class="btn btn-info" id="ifStatusUp">
-        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-        				Up <span id="statusUpCount" class="badge">0</span>
-        			</button>
-        			<button title="view ifdown" type="button" class="btn btn-warning" id="ifStatusDown">
-        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-        				Down <span id="statusDownCount" class="badge">0</span>
-        			</button>
-        			<button title="view chargeable" type="button" class="btn btn-success" id="ifChargeable">
-        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-        				Chargeable <span id="chargeableCount" class="badge">0</span>
-        			</button>
-        			<button title="view trace" type="button" class="btn btn-info" id="ifTraced">
-        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-        				Trace <span id="traceCount" class="badge">0</span>
-        			</button>
-        			<button title="view all" type="button" class="btn btn-default" id="ifNumber">
-        				<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-        				ifNumber <span id="ifNumberCount" class="badge"></span>
-        			</button>
-        		</div></li>
-        	</ul>
-		
-		<table id="ifTable" class="table table-condensed">
-          <thead>
-            <tr>
-              <td></td>
-              <td></td>
-              <td>ifDescr</td>
-              <td>Mbps In</td>
-              <td>Mbps Out</td>
-              <td>bytes In</td>
-              <td>bytes Out</td>
-              <td><button title="apply to all" type="button" class="btn btn-success btn-xs" id="chargeableOn">
-        				<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> On</button>
-        		   <button title="apply to all" type="button" class="btn btn-default btn-xs" id="chargeableOff">
-        		   		<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> Off</button>
-        	  </td>
-        	  <td><button title="apply to all" type="button" class="btn btn-info btn-xs" id="traceOn">
-        	    		<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span> On</button>
-        		  <button title="apply to all" type="button" class="btn btn-default btn-xs" id="traceOff">
-        				<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span> Off</button>      
-        	  </td>
-            </tr>
-          </thead>
-          <tbody>
-          </tbody>  
-        </table>
-	  </div>		
-    </div>
-    <!-- /.container -->
-    
-    <script>
+					<div class="btn-group btn-group-sm" role="group" aria-label="View">
+						<button title="view ifup" type="button" class="btn btn-info"
+							id="ifStatusUp">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							Up <span id="statusUpCount" class="badge">0</span>
+						</button>
+						<button title="view ifdown" type="button" class="btn btn-warning"
+							id="ifStatusDown">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							Down <span id="statusDownCount" class="badge">0</span>
+						</button>
+						<button title="view chargeable" type="button"
+							class="btn btn-success" id="ifChargeable">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							Chargeable <span id="chargeableCount" class="badge">0</span>
+						</button>
+						<button title="view trace" type="button" class="btn btn-info"
+							id="ifTraced">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							Trace <span id="traceCount" class="badge">0</span>
+						</button>
+						<button title="view all" type="button" class="btn btn-default"
+							id="ifNumber">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							ifNumber <span id="ifNumberCount" class="badge"></span>
+						</button>
+					</div>
+				</li>
+			</ul>
 
-    var ip = getUrlParameter("ip");
-    $("#ipaddr").text(ip);
-    //$("#address").text(ip);
-    //$("#removeBtn").text("Remove "+ip);
-    
-    function delSource() {
-    	$.ajax({
-    		url: "/api/v1/sources/"+ip,
-    		type: "DELETE",
-    		success: function(result) {
-    			window.location.href = "index.html";
-    		}
-		});
-    }
-    
-    function getSourceInfo() {
-    	$.ajax({
-    	url: "/api/v1/sources/"+ip,
-    	success: function(source){
-    		$("#updated").text(new Date(source.pollTime).toLocaleString());
-            $("#sysName").text(source.sysName);
-            $("#ifNumberCount").text(source.ifNumber);
-            $("#sysUptime").text(uptime(source.sysUptime));           
-            $("#statusUpCount").text(source.statusUpCounter);
-            $("#statusDownCount").text(source.statusDownCounter);
-            $("#chargeableCount").text(source.chargeableCounter);
-            $("#traceCount").text(source.traceCounter);
-         }
-    	});
-    }
-    
- 	var dt = $('#ifTable').DataTable({
-       ajax: {
-        url: "/api/v1/sources/"+ip+"/interfaces?status=up",
-        //dataSrc: '' 
-        dataSrc: function(ifTable) {
-          ifTable.forEach(function(ifEntry){
-          	if(ifEntry.chargeable) {
-            	ifEntry.actionCharge="<a title=\"click to uncharge\" class=\"label label-success\" onclick=\"updateIfchargeable('"+ifEntry.ifDescr+"',"+(!ifEntry.chargeable)+")\">";
-            	ifEntry.actionCharge+="<span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> charge</a>";
-            } else {
-            	ifEntry.actionCharge="<a title=\"click to charge\" class=\"label label-default\" onclick=\"updateIfchargeable('"+ifEntry.ifDescr+"',"+(!ifEntry.chargeable)+")\">";
-            	ifEntry.actionCharge+="<span class=\"glyphicon glyphicon-ok\" aria-hidden=\"true\"></span> charge</a>";
-            }
-            if(ifEntry.trace){
-            	ifEntry.actionTrace="<a title=\"click to untrace\" class=\"label label-info\" onclick=\"updateIftrace('"+ifEntry.ifDescr+"',"+(!ifEntry.trace)+")\">";
-            	ifEntry.actionTrace+="<span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> trace</a>";
-            }else{
-        		ifEntry.actionTrace="<a title=\"click to trace\" class=\"label label-default\" onclick=\"updateIftrace('"+ifEntry.ifDescr+"',"+(!ifEntry.trace)+")\">";
-            	ifEntry.actionTrace+="<span class=\"glyphicon glyphicon-ok\" aria-hidden=\"true\"></span> trace</a>"; 
-            }          
-            ifEntry.status = (ifEntry.up)?"<label class=\"label label-info\">up</label> ":"<label class=\"label label-warning\">down</label> ";
-          	ifEntry.ifDescr += (ifEntry.ifAlias)?" ("+ifEntry.ifAlias+")":"";
-          	//ifEntry.action = actionCharge + actionTrace;
-            ifEntry.rate_in = bandwidth(ifEntry.pollInOctets,30000);
-            ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets);
-            ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets);
-            ifEntry.rate_out = bandwidth(ifEntry.pollOutOctets,30000);
-          });
-          return ifTable;
-        }
-       },
-       lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-       columns: [
-        { "class":"detail","orderable":false,"data":null,
-          "defaultContent": "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-right\" aria-hidden=\"true\"></span>"},
-       	{ data: "status" },
-       	{ data:"ifDescr" },    	
-        { data: "rate_in","searchable":false },
-        { data: "rate_out","searchable":false },
-        { data: "bytes_in","orderable":false,"searchable":false },
-        { data: "bytes_out","orderable":false,"searchable":false },
-        { data:"actionCharge","orderable":false,"searchable":false },
-        { data:"actionTrace","orderable":false,"searchable":false }
-       ],
-       "order": [[3, 'desc']]
-    });
+			<table id="ifTable" class="table table-condensed">
+				<thead>
+					<tr>
+						<td></td>
+						<td></td>
+						<td>ifIndex</td>
+						<td>ifDescr</td>
+						<td>Mbps In</td>
+						<td>Mbps Out</td>
+						<td>bytes In</td>
+						<td>bytes Out</td>
+						<td><button title="apply to all" type="button"
+								class="btn btn-success btn-xs" id="chargeableOn">
+								<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span>
+								On
+							</button>
+							<button title="apply to all" type="button"
+								class="btn btn-default btn-xs" id="chargeableOff">
+								<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span>
+								Off
+							</button></td>
+						<td><button title="apply to all" type="button"
+								class="btn btn-info btn-xs" id="traceOn">
+								<span class="glyphicon glyphicon-ok-sign" aria-hidden="true"></span>
+								On
+							</button>
+							<button title="apply to all" type="button"
+								class="btn btn-default btn-xs" id="traceOff">
+								<span class="glyphicon glyphicon-remove-sign" aria-hidden="true"></span>
+								Off
+							</button></td>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<!-- /.container -->
 
-	function ifstatus(s) {
-		if (s == 1) return "(<b>up</b>)";
-		return "(<b>down</b>)";
-	}
-	
-	function format(d) {
-		return "<ul>"
-		    +"<li> ifIndex: <b>"+d.ifIndex+"</b>"
-			+"<li> ifName: <b>"+d.ifName+"</b>"
-			+"<li> ifAdminStatus: "+d.ifAdminStatus+ifstatus(d.ifAdminStatus)
-			+"<li> ifOperStatus: "+d.ifOperStatus+ifstatus(d.ifOperStatus)
-			+"<li> ifInOctets["+d.ifInOctets.type+"]: "+d.ifInOctets.value 
-			+"<li> ifOutOctets["+d.ifOutOctets.type+"]: "+d.ifOutOctets.value
-			+"</ul>";
-	}
-	
-	// Array to track the ids of the details displayed rows
-    var detailRows = [];
-    
-	$('#ifTable tbody').on( 'click', 'tr td.detail' , function () {
-        var tr = $(this).closest('tr');
-        //var btn = $(this).children();
-        var row = dt.row( tr );
-        var idx = $.inArray( tr.attr('id'), detailRows );
-        if ( row.child.isShown() ) {
-            row.child.hide();
-            // Remove from the 'open' array
-            detailRows.splice( idx, 1 );
-        } else {
-        	row.child( format( row.data() ) ).show();
- 
-            // Add to the 'open' array
-            if ( idx === -1 ) {
-                detailRows.push( tr.attr('id') );
-            }
-        }
-    } );
-    
-    
-    $('#ifStatusUp').on('click', function() {
-    	dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?status=up" ).load();
-    });
-    
-    $('#ifStatusDown').on('click', function() {
-    	dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?status=down" ).load();
-    });
-    
-    $('#ifChargeable').on('click', function () {
-        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?chargeable=on" ).load();  
-    });
-    $('#ifTraced').on('click', function () {
-        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces?trace=on" ).load();  
-    });
-    
-    $('#ifNumber').on('click', function () {
-        dt.ajax.url( "/api/v1/sources/"+ip+"/interfaces" ).load();  
-    });
-    
-   function getifdescr(str) {
-   		return str.replace(/ \(.*$/,'');
-   }
-    
-    $('#traceOn').on('click', function () {
-    		var batchIF = [];
-    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
-    			batchIF.push(getifdescr(idx));
-    		});
-    		updateIftrace(batchIF, true);
-    });
-    
-   $('#traceOff').on('click', function () {
-    		var batchIF = [];
-    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
-    			batchIF.push(getifdescr(idx));
-    		});
-    		updateIftrace(batchIF, false);
-    });
-    
-   $('#chargeableOn').on('click', function () {
-    		var batchIF = [];
-    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
-    			batchIF.push(getifdescr(idx));
-    		});
-    		updateIfchargeable(batchIF, true);
-    });
-    
-   $('#chargeableOff').on('click', function () {
-    		var batchIF = [];
-    		dt.columns( 2, {search:'applied'} ).data().eq(0).each(function(idx){
-    			batchIF.push(getifdescr(idx));
-    		});
-    		updateIfchargeable(batchIF, false);
-    });
-    
-   function showNotif(message) {
-        $('#responseBody').text(message.Status);
-        $('#responseMsg').removeClass('hidden');
-        setTimeout(function(){ $('#responseMsg').addClass('hidden'); }, 1000);
-    }  
-    
-    function updateIftrace(ifdescr,action) {
-    	var jsonData = JSON.stringify({"ifDescr":ifdescr, "trace":action});
-    	console.log("update trace: "+jsonData);
-    	$.ajax({
-    		url: "/api/v1/sources/"+ip+"/interfaces",
-    		type: "PUT",
-    		contentType: "application/json",
-    		data: jsonData,
-    		success: function(result) {
-    			dt.ajax.reload();
-    			getSourceInfo();
-    			showNotif(result);
-    		}
+	<script>
+		var ip = getUrlParameter("ip");
+		$("#ipaddr").text(ip);
+
+		function delSource() {
+			$.ajax({
+				url : "/api/v1/sources/" + ip,
+				type : "DELETE",
+				success : function(result) {
+					window.location.href = "index.html";
+				}
+			});
+		}
+
+		function getSourceInfo() {
+			$.ajax({
+				url : "/api/v1/sources/" + ip,
+				success : function(source) {
+					$("#updated").text(
+							new Date(source.pollTime).toLocaleString());
+					$("#sysName").text(source.sysName);
+					$("#ifNumberCount").text(source.ifNumber);
+					$("#sysUptime").text(uptime(source.sysUptime));
+					$("#statusUpCount").text(source.statusUpCounter);
+					$("#statusDownCount").text(source.statusDownCounter);
+					$("#chargeableCount").text(source.chargeableCounter);
+					$("#traceCount").text(source.traceCounter);
+				}
+			});
+		}
+
+		var dt = $('#ifTable')
+				.DataTable(
+						{
+							ajax : {
+								url : "/api/v1/sources/" + ip
+										+ "/interfaces?status=up",
+								//dataSrc: '' 
+								dataSrc : function(ifTable) {
+									ifTable
+											.forEach(function(ifEntry) {
+												if (ifEntry.chargeable) {
+													ifEntry.actionCharge = "<a title=\"click to uncharge\" class=\"label label-success\" onclick=\"updateIfchargeable('"
+															+ ifEntry.ifDescr
+															+ "',"
+															+ (!ifEntry.chargeable)
+															+ ")\">";
+													ifEntry.actionCharge += "<span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> charge</a>";
+												} else {
+													ifEntry.actionCharge = "<a title=\"click to charge\" class=\"label label-default\" onclick=\"updateIfchargeable('"
+															+ ifEntry.ifDescr
+															+ "',"
+															+ (!ifEntry.chargeable)
+															+ ")\">";
+													ifEntry.actionCharge += "<span class=\"glyphicon glyphicon-ok\" aria-hidden=\"true\"></span> charge</a>";
+												}
+												if (ifEntry.trace) {
+													ifEntry.actionTrace = "<a title=\"click to untrace\" class=\"label label-info\" onclick=\"updateIftrace('"
+															+ ifEntry.ifDescr
+															+ "',"
+															+ (!ifEntry.trace)
+															+ ")\">";
+													ifEntry.actionTrace += "<span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> trace</a>";
+												} else {
+													ifEntry.actionTrace = "<a title=\"click to trace\" class=\"label label-default\" onclick=\"updateIftrace('"
+															+ ifEntry.ifDescr
+															+ "',"
+															+ (!ifEntry.trace)
+															+ ")\">";
+													ifEntry.actionTrace += "<span class=\"glyphicon glyphicon-ok\" aria-hidden=\"true\"></span> trace</a>";
+												}
+												ifEntry.status = (ifEntry.up) ? "<label class=\"label label-info\">up</label> "
+														: "<label class=\"label label-warning\">down</label> ";
+												ifEntry.ifDescr += (ifEntry.ifAlias) ? " ("
+														+ ifEntry.ifAlias + ")"
+														: "";
+												//ifEntry.action = actionCharge + actionTrace;
+												ifEntry.rate_in = bandwidth(
+														ifEntry.pollInOctets,
+														30000);
+												ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets);
+												ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets);
+												ifEntry.rate_out = bandwidth(
+														ifEntry.pollOutOctets,
+														30000);
+											});
+									return ifTable;
+								}
+							},
+							lengthMenu : [ [ 10, 25, 50, -1 ],
+									[ 10, 25, 50, "All" ] ],
+							columns : [
+									{
+										"class" : "detail",
+										"orderable" : false,
+										"data" : null,
+										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-right\" aria-hidden=\"true\"></span>"
+									}, {
+										data : "status"
+									}, {
+										data : "ifIndex"
+									}, {
+										data : "ifDescr"
+									}, {
+										data : "rate_in",
+										"searchable" : false
+									}, {
+										data : "rate_out",
+										"searchable" : false
+									}, {
+										data : "bytes_in",
+										"orderable" : false,
+										"searchable" : false
+									}, {
+										data : "bytes_out",
+										"orderable" : false,
+										"searchable" : false
+									}, {
+										data : "actionCharge",
+										"orderable" : false,
+										"searchable" : false
+									}, {
+										data : "actionTrace",
+										"orderable" : false,
+										"searchable" : false
+									} ],
+							"order" : [ [ 4, 'desc' ] ]
+						});
+
+		function ifstatus(s) {
+			if (s == 1)
+				return "<b>up</b>";
+			return "<b>down</b>";
+		}
+
+		function format(d) {
+			return "<ul>" 
+					+ "<li> ifName: <b>" + d.ifName + "</b>"
+					+ "<li> ifAdminStatus [" + d.ifAdminStatus +"]: "	+ ifstatus(d.ifAdminStatus) 
+					+ "<li> ifOperStatus ["	+ d.ifOperStatus + "]: " + ifstatus(d.ifOperStatus)
+					+ "<li> ifInOctets [" + d.ifInOctets.type + "]: "	+ d.ifInOctets.value 
+					+ "<li> ifOutOctets [" + d.ifOutOctets.type + "]: " + d.ifOutOctets.value
+					+ "</ul>";
+		}
+
+		// Array to track the ids of the details displayed rows
+		var detailRows = [];
+
+		$('#ifTable tbody').on('click', 'tr td.detail', function() {
+			var tr = $(this).closest('tr');
+			//var btn = $(this).children();
+			var row = dt.row(tr);
+			var idx = $.inArray(tr.attr('id'), detailRows);
+			if (row.child.isShown()) {
+				row.child.hide();
+				// Remove from the 'open' array
+				detailRows.splice(idx, 1);
+			} else {
+				row.child(format(row.data())).show();
+
+				// Add to the 'open' array
+				if (idx === -1) {
+					detailRows.push(tr.attr('id'));
+				}
+			}
 		});
-    }
-    function updateIfchargeable(ifdescr,action) {
-    	var jsonData = JSON.stringify({"ifDescr":ifdescr, "chargeable":action});
-    	console.log("update chargable: "+jsonData);
-    	$.ajax({
-    		url: "/api/v1/sources/"+ip+"/interfaces",
-    		type: "PUT",
-    		contentType: "application/json",
-    		data: jsonData,
-    		success: function(result) {
-    			dt.ajax.reload();
-    			getSourceInfo();
-    			showNotif(result);
-    		}
+
+		$('#ifStatusUp').on(
+				'click',
+				function() {
+					getSourceInfo();
+					dt.ajax.url(
+							"/api/v1/sources/" + ip + "/interfaces?status=up")
+							.load();
+				});
+
+		$('#ifStatusDown')
+				.on(
+						'click',
+						function() {
+							getSourceInfo();
+							dt.ajax.url(
+									"/api/v1/sources/" + ip
+											+ "/interfaces?status=down").load();
+						});
+
+		$('#ifChargeable').on(
+				'click',
+				function() {
+					getSourceInfo();
+					dt.ajax.url(
+							"/api/v1/sources/" + ip
+									+ "/interfaces?chargeable=on").load();
+				});
+		$('#ifTraced').on(
+				'click',
+				function() {
+					getSourceInfo();
+					dt.ajax.url(
+							"/api/v1/sources/" + ip + "/interfaces?trace=on")
+							.load();
+				});
+
+		$('#ifNumber').on('click', function() {
+			getSourceInfo();
+			dt.ajax.url("/api/v1/sources/" + ip + "/interfaces").load();
 		});
-    }
-    getSourceInfo();
-    
-    </script>
-  </body>
+
+		function getifdescr(str) {
+			return str.replace(/ \(.*$/, '');
+		}
+
+		$('#traceOn').on('click', function() {
+			var batchIF = [];
+			dt.columns(3, {
+				search : 'applied'
+			}).data().eq(0).each(function(idx) {
+				batchIF.push(getifdescr(idx));
+			});
+			updateIftrace(batchIF, true);
+		});
+
+		$('#traceOff').on('click', function() {
+			var batchIF = [];
+			dt.columns(3, {
+				search : 'applied'
+			}).data().eq(0).each(function(idx) {
+				batchIF.push(getifdescr(idx));
+			});
+			updateIftrace(batchIF, false);
+		});
+
+		$('#chargeableOn').on('click', function() {
+			var batchIF = [];
+			dt.columns(3, {
+				search : 'applied'
+			}).data().eq(0).each(function(idx) {
+				batchIF.push(getifdescr(idx));
+			});
+			updateIfchargeable(batchIF, true);
+		});
+
+		$('#chargeableOff').on('click', function() {
+			var batchIF = [];
+			dt.columns(3, {
+				search : 'applied'
+			}).data().eq(0).each(function(idx) {
+				batchIF.push(getifdescr(idx));
+			});
+			updateIfchargeable(batchIF, false);
+		});
+
+		function updateIftrace(ifdescr, action) {
+			var jsonData = JSON.stringify({
+				"ifDescr" : ifdescr,
+				"trace" : action
+			});
+			console.log("update trace: " + jsonData);
+			$.ajax({
+				url : "/api/v1/sources/" + ip + "/interfaces",
+				type : "PUT",
+				contentType : "application/json",
+				data : jsonData,
+				success : function(result) {
+					dt.ajax.reload();
+					getSourceInfo();
+					bootstrap_alert.warning(result.Status, 'success', 3000);
+				}
+			});
+		}
+		function updateIfchargeable(ifdescr, action) {
+			var jsonData = JSON.stringify({
+				"ifDescr" : ifdescr,
+				"chargeable" : action
+			});
+			console.log("update chargable: " + jsonData);
+			$.ajax({
+				url : "/api/v1/sources/" + ip + "/interfaces",
+				type : "PUT",
+				contentType : "application/json",
+				data : jsonData,
+				success : function(result) {
+					dt.ajax.reload();
+					getSourceInfo();
+					bootstrap_alert.warning(result.Status, 'success', 3000);
+				}
+			});
+		}
+		getSourceInfo();
+		clusterInfo();
+	</script>
+</body>
 </html>

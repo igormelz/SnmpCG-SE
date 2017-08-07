@@ -1,0 +1,6 @@
+#floating_alert {
+    position: absolute;
+    top: 60px;
+    right: 20px;
+    z-index: 5000;
+}

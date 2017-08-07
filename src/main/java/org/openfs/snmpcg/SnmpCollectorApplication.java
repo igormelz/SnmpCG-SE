@@ -1,16 +1,25 @@
 package org.openfs.snmpcg;
 
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.camel.Exchange;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.model.rest.RestBindingMode;
-import org.apache.camel.model.rest.RestParamType;
+import org.apache.camel.component.hazelcast.HazelcastConstants;
+import org.apache.camel.component.hazelcast.policy.HazelcastRoutePolicy;
 import org.apache.camel.processor.aggregate.AggregationStrategy;
+import org.apache.camel.spi.RoutePolicy;
 import org.apache.camel.spi.ThreadPoolProfile;
+import org.openfs.snmpcg.model.SnmpSource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
+
+import com.hazelcast.config.Config;
+import com.hazelcast.config.InMemoryFormat;
+import com.hazelcast.core.HazelcastInstance;
 
 @SpringBootApplication
 public class SnmpCollectorApplication {
@@ -21,10 +30,43 @@ public class SnmpCollectorApplication {
 	@Value("${snmpcg.maxPoolThreads:30}")
 	private int maxPoolSize;
 	
+	@Value("${snmpcg.nodeIp:auto}")
+	private String nodeIp;
+
+	@Value("${snmpcg.memberIp:auto}")
+	private String memberIp;
+	
 	public static void main(String[] args) {
 		SpringApplication.run(SnmpCollectorApplication.class, args);
 	}
 
+	@Bean
+	public Config getConfig() {
+		Config config = new Config().setInstanceName("hzSnmpCG");
+		config.getMapConfig( "sources" ).setInMemoryFormat(InMemoryFormat.OBJECT);
+		if (!nodeIp.equalsIgnoreCase("auto")) {
+		    config.getNetworkConfig().getInterfaces().addInterface(nodeIp);
+			config.getNetworkConfig().getJoin().getMulticastConfig().setEnabled(false);
+			config.getNetworkConfig().getJoin().getTcpIpConfig().setEnabled(true).addMember(memberIp).addMember(nodeIp);
+		}
+		return config;
+	}
+
+	@Bean 
+	RoutePolicy clusterPolicy(HazelcastInstance instance) {
+		HazelcastRoutePolicy policy = new HazelcastRoutePolicy(instance);
+		policy.setLockMapName("snmpcg:lock:map");
+		policy.setLockKey("pollCounter-policy");
+		policy.setLockValue("locked");
+		policy.setTryLockTimeout(1, TimeUnit.MINUTES);
+		return policy;
+	}
+	
+	@Bean 
+	public ConcurrentMap<String,SnmpSource> getCacheMap(HazelcastInstance instance) {
+		return instance.getMap("sources");
+	}
+	
 	@Bean
 	ThreadPoolProfile camelThreadPoolProfile() {
 		ThreadPoolProfile customProfile = new ThreadPoolProfile();
@@ -35,56 +77,6 @@ public class SnmpCollectorApplication {
 		return customProfile;
 	}
 	
-	@Component
-	class RestApi extends RouteBuilder {
-
-		@Override
-		public void configure() {
-			restConfiguration()
-				.contextPath("/api")
-				.bindingMode(RestBindingMode.json);
-			
-			rest("/v1").description("SnmpCG REST service")
-					.consumes("application/json")
-					.produces("application/json")
-				.get("/sources").description("the list sources")
-					.param().name("status").type(RestParamType.query).endParam()
-					.route().routeId("sources-api")
-					.bean("snmpSources","getSources")
-					.endRest()
-				.get("/sources/{source}").description("source details")
-					.route().routeId("sources-api-details")
-					.bean("snmpSources","getSource(${header.source})")
-					.endRest()
-				.post("/sources").description("add source")
-					.route().routeId("sources-api-add")	
-					.bean("snmpSources","addSource")
-					.endRest()
-				.delete("/sources/{source}").description("delete source")
-					.route().routeId("sources-api-delete")	
-					.bean("snmpSources","removeSource")
-					.endRest()
-				.get("/sources/{source}/interfaces").description("the list source interfaces")
-					.param().name("trace").type(RestParamType.query).endParam()
-					.param().name("chargeable").type(RestParamType.query).endParam()
-					.route().routeId("sources-api-interfaces")
-					.bean("snmpSources","getSourceInterfaces")
-					.endRest()
-				.put("/sources/{source}/interfaces").description("update interfaces")
-					.param().name("trace").type(RestParamType.query).endParam()
-					.param().name("chargeable").type(RestParamType.query).endParam()
-					.route().routeId("sources-api-update-interfaces")
-					.bean("snmpSources","updateSourceInterface")
-					.endRest()
-				.get("/interfaces").description("the list interfaces")
-					.param().name("trace").type(RestParamType.query).endParam()
-					.param().name("chargeable").type(RestParamType.query).endParam()
-					.route().routeId("interfaces-api")
-					.bean("snmpSources","getInterfaces")
-					.endRest();
-		}
-	}
-
 	@Component
 	class Backend extends RouteBuilder {
 
@@ -102,17 +94,20 @@ public class SnmpCollectorApplication {
 			from("timer://validate?period={{snmpcg.validateStatusTimer:3m}}").routeId("pollStatus")
 				.split(method("snmpSources", "getDownSources"),new NullAggregationStrategy()).parallelProcessing()
 					.bean("snmpPoll", "pollStatus")
+					.setHeader(HazelcastConstants.OPERATION, constant(HazelcastConstants.PUT_OPERATION))
+					.to("hazelcast:map:sources?hazelcastInstanceName=hzSnmpCG")
 				.end();
 			
 			// scheduled poll counters
-			from("quartz2://snmp/poll?cron=0+0/5+*+*+*+?").routeId("pollCounters")
+			from("quartz2://snmp/poll?cron=0+0/5+*+*+*+?&pauseJob=true&deleteJob=false").routeId("pollCounters").routePolicyRef("clusterPolicy")
 				.filter(method("snmpSources","validateStartPoll"))
-					.log("started")
+					//.log("started")
 					.split(method("snmpSources", "getReadySources"),new NullAggregationStrategy()).parallelProcessing().executorServiceRef("SnmpCGThreadPoolProfile")
 						.bean("snmpPoll", "pollCounters")
+						.setHeader(HazelcastConstants.OPERATION, constant(HazelcastConstants.PUT_OPERATION))
+						.to("hazelcast:map:sources?hazelcastInstanceName=hzSnmpCG")
 					.end()
 					.log("${bean:snmpSources?method=logEndPoll}")
-					.bean("snmpSources","setRecoveryState")
 					.to("direct:storeCdr","direct:storeTrace")
 				.end();
 			

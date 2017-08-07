@@ -1,7 +1,8 @@
 package org.openfs.snmpcg;
 
-import org.apache.camel.Body;
+import org.apache.camel.Exchange;
 import org.apache.camel.Handler;
+import org.apache.camel.component.hazelcast.HazelcastConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snmp4j.Snmp;
@@ -65,8 +66,13 @@ public class SnmpPoll {
 		snmp.listen();
 	}
 
+	
 	@Handler
-	public void pollStatus(@Body SnmpSource source) throws Exception {
+	public void pollStatus(Exchange exchange) throws Exception {
+		SnmpSource source = exchange.getIn().getBody(SnmpSource.class);
+		// set Hazelcast Key
+		exchange.getIn().setHeader(HazelcastConstants.OBJECT_ID, source.getIpAddress());
+		
 		if (log.isDebugEnabled()) {
 			log.debug("source: {} poll status", source.getIpAddress());
 		}
@@ -144,13 +150,15 @@ public class SnmpPoll {
 	}
 
 	@Handler
-	public void pollCounters(@Body SnmpSource source) throws Exception {
+	public void pollCounters(Exchange exchange) throws Exception {
+		SnmpSource source = exchange.getIn().getBody(SnmpSource.class);
 		if (log.isDebugEnabled()) {
 			log.debug("source: {} poll counters", source.getIpAddress());
 		}
-
+		// set Hazelcast Key
+		exchange.getIn().setHeader(HazelcastConstants.OBJECT_ID, source.getIpAddress());
+		
 		long startPollTime = System.currentTimeMillis();
-
 		// get ifTable
 		List<TableEvent> events = getTable(source, COUNTER_OIDS);
 

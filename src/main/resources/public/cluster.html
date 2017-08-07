@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="">
+<meta name="author" content="">
+<link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon' />
+
+<title>SnmpCG - Admin Interface</title>
+
+<!-- Bootstrap Core CSS -->
+<link href="css/vendor/bootstrap.min.css" rel="stylesheet" />
+<link href="css/dataTables.bootstrap.min.css" rel="stylesheet" />
+
+<script src="js/vendor/jquery.min.js"></script>
+<script src="js/vendor/bootstrap.min.js"></script>
+<script src="js/vendor/datatables.min.js"></script>
+<script src="js/vendor/jquery.dataTables.min.js"></script>
+<script src="js/vendor/dataTables.bootstrap.min.js"></script>
+<script src="js/script.js"></script>
+<!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+<!--[if lt IE 9]>
+      <script src="js/vendor/html5shiv.js"></script>
+      <script src="js/vendor/respond.min.js"></script>
+    <![endif]-->
+</head>
+<body>
+	<!-- Navigation -->
+	<nav class="navbar navbar-default" role="navigation">
+		<div class="container">
+			<!-- brand -->
+			<div class="navbar-header">
+				<a class="navbar-brand" href="index.html">SnmpCG</a>
+			</div>
+			<!-- nav links -->
+			<ul class="nav navbar-nav">
+				<li class="active"><a href="index.html">Sources</a></li>
+				<li><a href="counters.html">PollCounters</a></li>
+			</ul>
+			<p class="navbar-text navbar-right">
+				Node status: <strong id="clusterInfo"></strong>
+			</p>
+		</div>
+		<!-- /.container -->
+	</nav>
+
+	<!-- page content -->
+	<div class="container">
+		<h3>Hazelcast cluster members</h3>
+		<table id="nodeTable" class="table table-condensed">
+			<thead>
+				<tr>
+					<th>Node</th>
+					<th>Status</th>
+					<th>Location</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+	<!-- /.container -->
+
+	<script>
+		// fill counter
+		function clusterMemeber() {
+			$.ajax({
+				url : "/api/v1/cluster/members",
+				success : function(members) {
+					members.forEach(function(member) {
+						console.log(member);
+						var location = (member.isLocal) ? "Local":"Remote";
+						var row = "<tr><td>[" + member.Host + "]:"
+								+ member.Port + "</td><td>"
+								+ member.Status + "</td><td>"
+								+ location + "</td></tr>";
+						$('#nodeTable tbody').append(row);
+					});
+				}
+			});
+		}
+
+		// onLoad
+		clusterInfo();
+		clusterMemeber();
+	</script>
+</body>
+</html>

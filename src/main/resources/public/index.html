@@ -1,351 +1,427 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon'/>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="">
+<meta name="author" content="">
+<link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon' />
 
-    <title>SnmpCG - Admin Interface</title>
+<title>SnmpCG - Admin Interface</title>
 
-    <!-- Bootstrap Core CSS -->
-    <link href="css/vendor/bootstrap.min.css" rel="stylesheet"/>
-    <link href="css/dataTables.bootstrap.min.css" rel="stylesheet"/>
+<!-- Bootstrap Core CSS -->
+<link href="css/vendor/bootstrap.min.css" rel="stylesheet" />
+<link href="css/dataTables.bootstrap.min.css" rel="stylesheet" />
+<link href="css/style.css" rel="stylesheet" />
 
-    <script src="js/vendor/jquery.min.js"></script>
-    <script src="js/vendor/bootstrap.min.js"></script>
-    <script src="js/vendor/datatables.min.js"></script>
-    <script src="js/vendor/jquery.dataTables.min.js"></script>
-    <script src="js/vendor/dataTables.bootstrap.min.js"></script>
-    <script src="js/script.js"></script>
-    <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
-    <!--[if lt IE 9]>
+<script src="js/vendor/jquery.min.js"></script>
+<script src="js/vendor/bootstrap.min.js"></script>
+<script src="js/vendor/datatables.min.js"></script>
+<script src="js/vendor/jquery.dataTables.min.js"></script>
+<script src="js/vendor/dataTables.bootstrap.min.js"></script>
+<script src="js/script.js"></script>
+<!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+<!--[if lt IE 9]>
       <script src="js/vendor/html5shiv.js"></script>
       <script src="js/vendor/respond.min.js"></script>
     <![endif]-->
-  </head>
-  <body>
-  	 <!-- Navigation -->
-    <nav class="navbar navbar-default" role="navigation">
-      <div class="container">
-      	<!-- brand -->
-        <div class="navbar-header">
-         <a class="navbar-brand" href="index.html">SnmpCG</a>
-        </div>
-        <!-- nav links -->
-        <ul class="nav navbar-nav">
-          <li class="active"><a href="index.html">Sources</a></li>
-          <li><a href="counters.html">PollCounters</a></li>
-        </ul>
-      </div>
-      <!-- /.container -->
-    </nav>
+</head>
+<body>
+	<!-- Navigation -->
+	<nav class="navbar navbar-default" role="navigation">
+		<div class="container">
+			<!-- brand -->
+			<div class="navbar-header">
+				<a class="navbar-brand" href="index.html">SnmpCG</a>
+			</div>
+			<!-- nav links -->
+			<ul class="nav navbar-nav">
+				<li class="active"><a href="index.html">Sources</a></li>
+				<li><a href="counters.html">PollCounters</a></li>
+			</ul>
+			<ul class="nav navbar-nav navbar-right">
+				
+				<li>
+					<button type="button"
+						class="btn btn-default navbar-btn navbar-right"
+						data-toggle="modal" data-target="#myModal">
+						<span class="glyphicon glyphicon-plus" aria-hidden="true"></span>
+						Add Source
+					</button>
+				</li>
+				<li><a href="cluster.html">Node status: <strong id="clusterInfo"></strong></a></li>
+			</ul>
+		</div>
+		<!-- /.container -->
+	</nav>
 
-    <!-- page content -->
-    <div class="container">
-    	<div class="row">
-        	<div id="source_add" class="alert alert-success alert-dismissible hidden" role="alert">
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-            Source added.
-        	</div>
-        </div>
+	<!-- page content -->
+	<div class="container">
 		<div class="row">
-			<div class="col-md-9">
 			<ul class="list-group">
 				<li class="list-group-item small">
-		   		<div class="btn-group btn-group-sm" role="group" aria-label="View">
-          			<button title="view all sources" type="radio" id="filter_all" class="btn btn-info active"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> ALL <span id="allVal" class="badge"></span></button>
-          			<button title="view up sources" type="radio" id="filter_success" class="btn btn-success"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> SUCCESS <span id="successVal" class="badge"></span></button>
-          			<button title="view timeout sources" type="radio" id="filter_timeout" class="btn btn-danger"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> TIMEOUT <span id="timeoutVal" class="badge"></span></button>
-          			<button title="view error sources" type="radio" id="filter_nopdu" class="btn btn-warning"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> NO PDU <span id="nopduVal" class="badge"></span></button>
-          			<button title="view error sources" type="radio" id="filter_noif" class="btn btn-warning"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> NO IFTABLE <span id="noifVal" class="badge"></span></button>
-          			<button title="view pending status sources" type="radio" id="filter_unknown" class="btn btn-default"><span class="glyphicon glyphicon-filter" aria-hidden="true"></span> UNKNOWN <span id="unknownVal" class="badge"></span></button>
-				</div>
+					<div class="btn-group btn-group-sm" role="group" aria-label="View">
+						<button title="view all sources" type="radio" id="filter_all"
+							class="btn btn-info active">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							ALL <span id="allVal" class="badge"></span>
+						</button>
+						<button title="view up sources" type="radio" id="filter_success"
+							class="btn btn-success">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							SUCCESS <span id="successVal" class="badge"></span>
+						</button>
+						<button title="view timeout sources" type="radio"
+							id="filter_timeout" class="btn btn-danger">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							TIMEOUT <span id="timeoutVal" class="badge"></span>
+						</button>
+						<button title="view error sources" type="radio" id="filter_nopdu"
+							class="btn btn-warning">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							NO PDU <span id="nopduVal" class="badge"></span>
+						</button>
+						<button title="view error sources" type="radio" id="filter_noif"
+							class="btn btn-warning">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							NO IFTABLE <span id="noifVal" class="badge"></span>
+						</button>
+						<button title="view pending status sources" type="radio"
+							id="filter_unknown" class="btn btn-default">
+							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+							UNKNOWN <span id="unknownVal" class="badge"></span>
+						</button>
+					</div>
 				</li>
 			</ul>
+		</div>
+		<table id="ifTable" class="table table-condensed">
+			<thead>
+				<tr>
+					<th></th>
+					<th>Source</th>
+					<th>status</th>
+					<th>#Up</th>
+					<th>#Chargeable</th>
+					<th>#Trace</th>
+					<th>last poll</th>
+					<th>last response (ms)</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
+	<!-- /.container -->
+
+	<!-- Modal -->
+	<div class="modal fade" id="myModal" tabindex="-1" role="dialog"
+		aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal"
+						aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">Add source to SnmpCG</h4>
+				</div>
+				<form>
+					<div class="modal-body">
+						<label for="new_source">IP ADDR</label><em>(<span
+							style="color: red">*</span>required)
+						</em>
+						<div class="form-group">
+							<input id="new_source" type="text" class="form-control"
+								placeholder="0.0.0.0" aria-describedby="basic-addon1">
+						</div>
+						<label for="community">SNMP COMMUNITY STRING</label>
+						<div class="form-group">
+							<input disabled id="community" type="text" class="form-control"
+								placeholder="community-string" aria-describedby="basic-addon1">
+							<label><input id="useSystemCommunity" type="checkbox"
+								checked /> use system default</label>
+						</div>
+						<div class="form-group">
+							<input id="descr" type="text" class="form-control"
+								placeholder="description" aria-describedby="basic-addon1">
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+						<button class="btn btn-primary" type="submit" data-dismiss="modal"
+							onclick="addSource()">Add source</button>
+					</div>
+				</form>
 			</div>
-			<div class="col-md-3">
-        		<button type="button" class="btn btn-default navbar-btn navbar-right" data-toggle="modal" data-target="#myModal">
-        			<span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add Source
-        		</button>
-        	</div>
-        </div>
-        <table id="ifTable" class="table table-condensed">
-          <thead>
-            <tr>
-              <th></th>
-              <th>Source</th>
-              <th>status</th>
-              <th>#Up</th>
-              <th>#Chargeable</th>
-              <th>#Trace</th>
-              <th>last poll</th>
-              <th>last response (ms)</th>
-            </tr>
-          </thead>
-          <tbody>
-          </tbody>
-        </table>
-        </div>
-
-        <!-- Modal -->
-		<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-  			<div class="modal-dialog" role="document">
-    			<div class="modal-content">
-      				<div class="modal-header">
-        				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        				<h4 class="modal-title" id="myModalLabel">Add source to SnmpCG</h4>
-      				</div>
-      				<form>
-      			<div class="modal-body">
-      				<label for="new_source">IP ADDR</label><em>(<span style="color:red">*</span>required)</em>
- 					<div class="form-group">
-						<input id="new_source" type="text" class="form-control" placeholder="0.0.0.0" aria-describedby="basic-addon1">
-					</div>
-					<label for="community">SNMP COMMUNITY STRING</label>
-					<div class="form-group">
-						<input disabled id="community" type="text" class="form-control" placeholder="community-string" aria-describedby="basic-addon1">
-						<label><input id="useSystemCommunity" type="checkbox" checked /> use system default</label>
-					</div>
-					<div class="form-group">
-						<input id="descr" type="text" class="form-control" placeholder="description" aria-describedby="basic-addon1">
-					</div>
-     			</div>
-      			<div class="modal-footer">
-      				<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-        			<button class="btn btn-primary" type="submit" data-dismiss="modal" onclick="addSource()">Add source</button>
-      			</div>
-      			</form>
-    			</div>
-  			</div>
 		</div>
+	</div>
 
-		<div class="modal fade" id="myRemModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-  			<div class="modal-dialog" role="document">
-    			<div class="modal-content">
-      				<div class="modal-header">
-        				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-        				<h4 class="modal-title" id="myModalLabel">Remove source from SnmpCG</h4>
-      				</div>
-      			<div class="modal-footer">
-      			<form>
-      			    <input type="hidden" id="ipToRemove"/>
-      				<button type="button" class="btn btn-default" data-dismiss="modal">No, return</button>
-        			<button class="btn btn-danger" type="submit" data-dismiss="modal" onclick="deleteSource()">Yes, remove</button>
-        		</form>
-      			</div>
-    			</div>
-  			</div>
+	<div class="modal fade" id="myRemModal" tabindex="-1" role="dialog"
+		aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal"
+						aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel">Remove source from
+						SnmpCG</h4>
+				</div>
+				<div class="modal-footer">
+					<form>
+						<input type="hidden" id="ipToRemove" />
+						<button type="button" class="btn btn-default" data-dismiss="modal">No,
+							return</button>
+						<button class="btn btn-danger" type="submit" data-dismiss="modal"
+							onclick="deleteSource()">Yes, remove</button>
+					</form>
+				</div>
+			</div>
 		</div>
+	</div>
 
+	<script>
+		$('#useSystemCommunity').on('click', function() {
+			if (this.checked) {
+				$('#community').prop('disabled', true);
+			} else {
+				$('#community').prop('disabled', false);
+			}
+		});
 
-    </div>
-    <!-- /.container -->
+		function addSource() {
+			var source = $('#new_source').val();
+			var community = $('#community').val();
+			var retries = $('#retries').val();
+			var timeout = $('#timeout').val();
 
-    <script>
+			if (validateIPaddress(source)) {
+				//var jsonData = JSON.stringify({"ipaddr":source, "community":action});
+				var jsonData = "{\"ipaddr\":\"" + source + "\"";
+				if (community != null && community != '') {
+					jsonData += ",\"community\":\"" + community + "\"";
+				}
+				if (retries != null && retries != '') {
+					jsonData += ",\"retries\":" + parseInt(retires) + "";
+				}
+				if (timeout != null && timeout != '') {
+					jsonData += ",\"timeout\":" + parseInt(timeout) + "";
+				}
+				jsonData += "}";
 
-      function showNotif(message) {
-        if (message != null) {
-        	$('#source_add').text(message.Status);
-        	$('#source_add').removeClass('hidden');
-        	setTimeout(function(){ $('#source_add').addClass('hidden'); }, 1000);
-        	fillCounter();
-        	dt.ajax.reload();
-        }
-        //clear input
-        //$('#new_source').val('');
-        //$('#community').val('');
-      }
-
-	$('#useSystemCommunity').on('click', function() {
-		if (this.checked) {
-			$('#community').prop('disabled', true);
-		} else {
-			$('#community').prop('disabled', false);
+				console.log("add source: " + jsonData);
+				$.ajax({
+					url : "/api/v1/sources", //+source+queryStr,
+					type : 'POST',
+					contentType : "application/json",
+					data : jsonData,
+					success : function() {
+						bootstrap_alert.warning('Source add to poll',
+								'success', 3000);
+						fillCounter();
+						dt.ajax.url('/api/v1/sources').load();
+					}
+				});
+			} else {
+				showNotif({
+					"Status" : "Wrong IP format: " + source
+				});
+			}
 		}
-	 });
 
-      function addSource() {
-        var source = $('#new_source').val();
-        var community = $('#community').val();
-        var retries = $('#retries').val();
-        var timeout = $('#timeout').val();
-        //var queryStr = '';
-        //if (community != null && community != '') {
-        //	queryStr = "?"+community;
-        //}
+		function deleteSource() {
+			var source = $('#ipToRemove').val();
+			if (source != null && source != "") {
+				console.log("Try to delete /api/v1/sources/" + source);
+				$.ajax({
+					url : "/api/v1/sources/" + source,
+					type : "DELETE",
+					success : function() {
+						bootstrap_alert.warning('Source deleted', 'success', 3000);
+						fillCounter();
+						dt.ajax.url('/api/v1/sources').load();
+					}
+				});
+			}
+		}
 
-        if (validateIPaddress(source)) {
-          //var jsonData = JSON.stringify({"ipaddr":source, "community":action});
-          var jsonData = "{\"ipaddr\":\""+source+"\"";
-          if (community != null && community != '') {
-            jsonData += ",\"community\":\""+community+"\"";
-          }
-          if (retries != null && retries != '') {
-            jsonData += ",\"retries\":"+parseInt(retires)+"";
-          }
-          if (timeout != null && timeout != '') {
-            jsonData += ",\"timeout\":"+parseInt(timeout)+"";
-          }
-          jsonData += "}";
-          
-          console.log("add source: "+jsonData);
-          $.ajax({
-            url: "/api/v1/sources", //+source+queryStr,
-            type: 'POST',
-            contentType: "application/json",
-            data: jsonData,
-            success: showNotif
-          });
-        } else {
-          showNotif({"Status" : "Wrong IP format: " + source});
-        }
-      }
+		// fill counter
+		function fillCounter() {
+			$.ajax({
+				url : "/api/v1/sources?stats",
+				success : function(stats) {
+					var suc = (stats.SUCCESS) ? parseInt(stats.SUCCESS) : 0;
+					var tim = (stats.TIMEOUT) ? parseInt(stats.TIMEOUT) : 0;
+					var unk = (stats.UNKNOWN) ? parseInt(stats.UNKNOWN) : 0;
+					var np = (stats.NO_PDU) ? parseInt(stats.NO_PDU) : 0;
+					var nif = (stats.NO_IFTABLE) ? parseInt(stats.NO_IFTABLE)
+							: 0;
+					$('#allVal').text(suc + tim + unk + np + nif);
+					$('#successVal').text(suc);
+					$('#timeoutVal').text(tim);
+					$('#unknownVal').text(unk);
+					$('#nopduVal').text(np);
+					$('#noifVal').text(nif);
+				}
+			});
+		}
 
-      function deleteSource() {
-        var source = $('#ipToRemove').val();
-        if (source != null && source != "") {
-        	console.log("Try to delete /api/v1/sources/"+source);
-        	$.ajax({
-          		url: "/api/v1/sources/"+source,
-          		type: "DELETE",
-          		success: showNotif
-        	});
-        }
-      }
+		var dt = $('#ifTable')
+				.DataTable(
+						{
+							ajax : {
+								url : "/api/v1/sources",
+								dataSrc : function(sources) {
+									sources
+											.forEach(function(source) {
+												source.viewIF = "<a title=\"click to view interfaces\" href=\"view.html?ip="
+														+ source.Ip
+														+ "\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a> ";
+												switch (source.Status) {
+												case 'SUCCESS':
+													source.Status = "<span class=\"label label-success small\">"
+															+ source.Status
+															+ "</span>";
+													break;
+												case 'TIMEOUT':
+													source.Status = "<span class=\"label label-danger small\">"
+															+ source.Status
+															+ "</span>";
+													break;
+												case 'NO_PDU':
+													source.Status = "<span class=\"label label-warning small\">"
+															+ source.Status
+															+ "</span>";
+													break;
+												case 'NO IFTABLE':
+													source.Status = "<span class=\"label label-warning small\">"
+															+ source.Status
+															+ "</span>";
+													break;
+												case 'UNKNOWN':
+													source.Status = "<span class=\"label label-default small\">"
+															+ source.Status
+															+ "</span> ";
+												}
+												source.SourceInfo = source.viewIF;
+												source.SourceInfo += (source.sysName) ? source.sysName
+														+ " ["
+														+ source.Ip
+														+ "]"
+														: source.Ip;
+												//source.SourceInfo += "<br/><small>" + source.viewIF + source.Status + "</small>";
+												source.pollTime = new Date(
+														source.pollTime)
+														.toLocaleString();
+											});
+									return sources;
+								}
+							},
+							lengthMenu : [ [ 10, 25, 50, -1 ],
+									[ 10, 25, 50, "All" ] ],
+							columns : [
+									{
+										"class" : "detail",
+										"orderable" : false,
+										"data" : null,
+										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-right\" aria-hidden=\"true\"></span>"
+									}, {
+										data : "SourceInfo"
+									}, {
+										data : "Status"
+									}, {
+										data : "statusUpCounter"
+									}, {
+										data : "chargeableCounter"
+									}, {
+										data : "traceCounter"
+									}, {
+										data : "pollTime"
+									}, {
+										data : "pollResponse"
+									} ],
+							"order" : [ [ 1, 'asc' ] ]
+						});
 
-	// fill counter
-	function fillCounter(){
-	$.ajax({
-          url: "/api/v1/sources?stats",
-          success: function(stats) {
-      			var suc = (stats.SUCCESS)?parseInt(stats.SUCCESS):0;
-          		var tim = (stats.TIMEOUT)?parseInt(stats.TIMEOUT):0;
-          		var unk = (stats.UNKNOWN)?parseInt(stats.UNKNOWN):0;
-          		var np = (stats.NO_PDU)?parseInt(stats.NO_PDU):0;
-          		var nif = (stats.NO_IFTABLE)?parseInt(stats.NO_IFTABLE):0;
-          		$('#allVal').text(suc+tim+unk+np+nif);
-          		$('#successVal').text(suc);
-          		$('#timeoutVal').text(tim);
-          		$('#unknownVal').text(unk);
-          		$('#nopduVal').text(np);
-          		$('#noifVal').text(nif);
-          }
-        });
-    }
+		function format(source) {
+			return "<ul class=\"list-group\">"
+					+ "<li class=\"list-group-item small\"><span>"
+					+ source.sysDescr
+					+ "</span></li>"
+					+ "<li class=\"list-group-item small\"><label>sysUpTime:</label> <span>"
+					+ uptime(source.sysUptime)
+					+ "</span></li>"
+					+ "<li class=\"list-group-item small\">"
+					+ "<a title=\"click to view interfaces\" class=\"btn btn-default btn-sm\" href=\"view.html?ip="
+					+ source.Ip
+					+ "\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span> Interfaces</a> "
+					+ "<button type=\"button\" class=\"btn btn-warning btn-sm\" onclick=\"askRemove('"
+					+ source.Ip
+					+ "')\"><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> Remove</button>"
+					+ "</li></ul>";
+		}
 
-	var dt = $('#ifTable').DataTable({
-       ajax: {
-        url: "/api/v1/sources",
-        dataSrc: function(sources) {
-          sources.forEach(function(source){
-            source.viewIF = "<a title=\"click to view interfaces\" href=\"view.html?ip="+source.Ip+"\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a> ";
-            switch(source.Status) {
-            case 'SUCCESS':
-             		source.Status = "<span class=\"label label-success small\">"+source.Status+"</span>";
-            		break;
-            case 'TIMEOUT':
-             		source.Status = "<span class=\"label label-danger small\">"+source.Status+"</span>";
-             		break;
-            case 'NO_PDU':
-                source.Status = "<span class=\"label label-warning small\">"+source.Status+"</span>";
-                break;
-            case 'NO IFTABLE':
-             		source.Status = "<span class=\"label label-warning small\">"+source.Status+"</span>";
-             		break;
-             case 'UNKNOWN':
-             		source.Status = "<span class=\"label label-default small\">"+source.Status+"</span> ";
-            }
-            source.SourceInfo = source.viewIF;
-            source.SourceInfo += (source.sysName)?source.sysName+" ["+source.Ip+"]":source.Ip;
-            //source.SourceInfo += "<br/><small>" + source.viewIF + source.Status + "</small>";
-            source.pollTime = new Date(source.pollTime).toLocaleString();
-          });
-          return sources;
-        }
-       },
-       lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
-       columns: [
-        { "class":"detail","orderable":false,"data":null,
-          "defaultContent": "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-right\" aria-hidden=\"true\"></span>"},
-        { data: "SourceInfo" },
-        { data: "Status" },
-        { data: "statusUpCounter" },
-        { data: "chargeableCounter" },
-        { data: "traceCounter" },
-        { data: "pollTime" },
-        { data: "pollResponse" }
-       ],
-       "order": [[1, 'asc']]
-    });
+		// Array to track the ids of the details displayed rows
+		var detailRows = [];
 
-	function format(source) {
-		return "<ul class=\"list-group\">"
-		    +"<li class=\"list-group-item small\"><span>"+source.sysDescr + "</span></li>"
-		    +"<li class=\"list-group-item small\"><label>sysUpTime:</label> <span>"+uptime(source.sysUptime) + "</span></li>"
-		    +"<li class=\"list-group-item small\">"
-        +"<a title=\"click to view interfaces\" class=\"btn btn-default btn-sm\" href=\"view.html?ip="+source.Ip+"\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span> Interfaces</a> "
-		    +"<button type=\"button\" class=\"btn btn-default btn-sm\" onclick=\"askRemove('"+source.Ip+"')\"><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> Remove</button>"
-			  +"</li></ul>";
-	}
+		$('#ifTable tbody').on('click', 'tr td.detail', function() {
+			var tr = $(this).closest('tr');
+			var row = dt.row(tr);
+			var idx = $.inArray(tr.attr('id'), detailRows);
+			if (row.child.isShown()) {
+				row.child.hide();
+				// Remove from the 'open' array
+				detailRows.splice(idx, 1);
+			} else {
+				row.child(format(row.data())).show();
+				// Add to the 'open' array
+				if (idx === -1) {
+					detailRows.push(tr.attr('id'));
+				}
+			}
+		});
 
-	// Array to track the ids of the details displayed rows
-    var detailRows = [];
+		$('#filter_all').on('click', function() {
+			fillCounter();
+			dt.ajax.url('/api/v1/sources').load();
+		});
+		$('#filter_success').on('click', function() {
+			fillCounter();
+			dt.ajax.url('/api/v1/sources?status=SUCCESS').load();
+		});
+		$('#filter_timeout').on('click', function() {
+			fillCounter();
+			dt.ajax.url('/api/v1/sources?status=TIMEOUT').load();
+		});
+		$('#filter_unknown').on('click', function() {
+			fillCounter();
+			dt.ajax.url('/api/v1/sources?status=UNKNOWN').load();
+		});
+		$('#filter_nopdu').on('click', function() {
+			fillCounter();
+			dt.ajax.url('/api/v1/sources?status=NO_PDU').load();
+		});
+		$('#filter_noif').on('click', function() {
+			fillCounter();
+			dt.ajax.url('/api/v1/sources?status=NO_IFTABLE').load();
+		});
 
-	$('#ifTable tbody').on( 'click', 'tr td.detail' , function () {
-        var tr = $(this).closest('tr');
-        var row = dt.row( tr );
-        var idx = $.inArray( tr.attr('id'), detailRows );
-        if ( row.child.isShown() ) {
-            row.child.hide();
-            // Remove from the 'open' array
-            detailRows.splice( idx, 1 );
-        } else {
-        	row.child( format( row.data() ) ).show();
-            // Add to the 'open' array
-            if ( idx === -1 ) {
-                detailRows.push( tr.attr('id') );
-            }
-        }
-    } );
+		// onLoad
+		fillCounter();
+		clusterInfo();
 
-      $('#filter_all').on('click', function () {
-      	fillCounter();
-        dt.ajax.url('/api/v1/sources').load();
-      });
-      $('#filter_success').on('click', function () {
-      	fillCounter();
-        dt.ajax.url('/api/v1/sources?status=SUCCESS').load();
-      });
-      $('#filter_timeout').on('click', function () {
-      	fillCounter();
-        dt.ajax.url('/api/v1/sources?status=TIMEOUT').load();
-      });
-      $('#filter_unknown').on('click', function () {
-      	fillCounter();
-        dt.ajax.url('/api/v1/sources?status=UNKNOWN').load();
-      });
-      $('#filter_nopdu').on('click', function () {
-      	fillCounter();
-        dt.ajax.url('/api/v1/sources?status=NO_PDU').load();
-      });
-      $('#filter_noif').on('click', function () {
-      	fillCounter();
-        dt.ajax.url('/api/v1/sources?status=NO_IFTABLE').load();
-      });
-      // onLoad
-      fillCounter();
+		function askRemove(ip) {
+			console.log("try to remove:" + ip);
+			jQuery.noConflict();
+			$("#myRemModal").find('.modal-title').text(
+					'Remove ' + ip + ' from SnmpCG');
+			$("#myRemModal").find('.modal-footer input').val(ip);
+			$("#myRemModal").modal();
+		}
 
-      function askRemove(ip) {
-      	console.log("try to remove:"+ip);
-        jQuery.noConflict();
-        $("#myRemModal").find('.modal-title').text('Remove ' + ip + ' from SnmpCG');
-        $("#myRemModal").find('.modal-footer input').val(ip);
-      	$("#myRemModal").modal();
-      }
-
-    </script>
-  </body>
+	</script>
+</body>
 </html>

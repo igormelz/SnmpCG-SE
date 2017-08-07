@@ -11,7 +11,7 @@ import org.snmp4j.CommunityTarget;
 public final class SnmpSource implements Serializable {
 	private static final long serialVersionUID = 5914824756678341630L;
 	private final String ipAddress;
-	private SnmpSourceStatus status = SnmpSourceStatus.UNKNOWN;
+	private String status = SnmpSourceStatus.UNKNOWN;
 	private long sysUptime;
 	private String sysDescr;
 	private String sysName;
@@ -21,10 +21,10 @@ public final class SnmpSource implements Serializable {
 	private final String community;
 	private final int retries;
 	private final int timeout;
-	transient private CommunityTarget target;
-	transient private long pollDuration;
-	transient private boolean skipDelta = true;
-	transient private long pollResponse;
+	private CommunityTarget target;
+	private long pollDuration;
+	private boolean skipDelta = true;
+	private long pollResponse;
 	
 	public SnmpSource(String ipAddress, String community, int retries, int timeout) {
 		this.ipAddress = ipAddress;
@@ -34,7 +34,7 @@ public final class SnmpSource implements Serializable {
 		this.target = SnmpCommunityTarget.createTarget(ipAddress, community, retries, timeout);
 	}
 	
-	public SnmpSourceStatus getStatus() {
+	public String getStatus() {
 		return status;
 	}
 
@@ -77,7 +77,7 @@ public final class SnmpSource implements Serializable {
 				.collect(Collectors.toList());
 	}
 
-	public void setStatus(SnmpSourceStatus status) {
+	public void setStatus(String status) {
 		this.status = status;
 	}
 

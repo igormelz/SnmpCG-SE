@@ -1,15 +1,5 @@
 package org.openfs.snmpcg;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,16 +7,13 @@ import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.annotation.PostConstruct;
-
 import org.apache.camel.Exchange;
 import org.apache.camel.Handler;
-import org.apache.camel.util.FileUtil;
 import org.apache.camel.util.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,8 +40,8 @@ public class SourceInventoryService {
 	@Value("${snmpcg.snmpRetries:3}")
 	private int retries;
 
-	@Value("${snmpcg.persistFileName:none}")
-	private String persistFileName;
+//	@Value("${snmpcg.persistFileName:none}")
+//	private String persistFileName;
 
 	@Value("${snmpcg.cdrTimeStampFormat:yyyy-MM-dd HH:mm:ss}")
 	private SimpleDateFormat timeStampFormat;
@@ -62,7 +49,10 @@ public class SourceInventoryService {
 	@Value("${snmpcg.cdrFieldSeparator:;}")
 	private String fieldSeparator;
 
-	private Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
+	//private Map<String, SnmpSource> sources = new ConcurrentHashMap<String, SnmpSource>();
+	
+	@Autowired
+	private ConcurrentMap<String, SnmpSource> sources;
 
 	private final static Pattern IPADDR_PATTERN = Pattern.compile("\\d+.\\d+.\\d+.\\d+");
 	
@@ -138,12 +128,12 @@ public class SourceInventoryService {
 
 	@Handler
 	public List<SnmpSource> getReadySources() {
-		return sources.values().stream().filter(info -> info.getStatus().isUp()).collect(Collectors.toList());
+		return sources.values().stream().filter(info -> info.getStatus().equalsIgnoreCase(SnmpSourceStatus.SUCCESS)).collect(Collectors.toList());
 	}
 
 	@Handler
 	public List<SnmpSource> getDownSources() {
-		return sources.values().stream().filter(source -> source.getStatus().isDown()).collect(Collectors.toList());
+		return sources.values().stream().filter(source -> !source.getStatus().equalsIgnoreCase(SnmpSourceStatus.SUCCESS)).collect(Collectors.toList());
 	}
 
 
@@ -158,11 +148,10 @@ public class SourceInventoryService {
 
 		// process query parameter status
 		String status = exchange.getIn().getHeader("status", String.class);
-		if (status != null && SnmpSourceStatus.isMember(status)) {
-			SnmpSourceStatus qStatus = SnmpSourceStatus.valueOf(status
-					.toUpperCase());
+		if (status != null && !status.isEmpty()) {
+			//SnmpSourceStatus qStatus = SnmpSourceStatus.valueOf(status.toUpperCase());
 			exchange.getIn().setBody(sources.values().stream()
-					.filter(e -> e.getStatus() == qStatus).map(mapSource)
+					.filter(e -> e.getStatus().equalsIgnoreCase(status)).map(mapSource)
 					.collect(Collectors.toList()));
 			return;
 		}
@@ -414,9 +403,7 @@ public class SourceInventoryService {
 		if (exchange.getIn().getBody() != null) {
 			@SuppressWarnings("unchecked")
 			Map<String, Object> data = (Map<String, Object>) exchange.getIn().getBody(Map.class);
-			if (data != null && data.containsKey("ifDescr")) {
-				Map<String, Object> answer = new HashMap<String, Object>(1);
-				
+			if (data != null && data.containsKey("ifDescr")) {				
 				if (data.get("ifDescr") instanceof String) {
 					SnmpInterface ifEntry = source.getIftable().get(data.get("ifDescr"));
 					if (ifEntry == null) {
@@ -427,15 +414,15 @@ public class SourceInventoryService {
 				
 					if (data.containsKey("trace")) {
 						ifEntry.setTrace((Boolean)data.get("trace"));
-						answer.put("Status", "interface " + ifEntry.getIfDescr() + " tracing " + ifEntry.isTrace());
-						exchange.getIn().setBody(answer);
+						exchange.getIn().setBody(Collections.singletonMap("Status", "interface " + ifEntry.getIfDescr() + " tracing " + ifEntry.isTrace()));
+						sources.put(sourceIpAddr, source);
 						return;
 					}
 				
 					if (data.containsKey("chargeable")) {
 						ifEntry.setChargeable((Boolean)data.get("chargeable"));
-						answer.put("Status", "interface " + ifEntry.getIfDescr() + " charging " + ifEntry.isChargeable());
-						exchange.getIn().setBody(answer);
+						exchange.getIn().setBody(Collections.singletonMap("Status","interface " + ifEntry.getIfDescr() + " charging " + ifEntry.isChargeable()));
+						sources.put(sourceIpAddr, source);
 						return;
 					}
 				} else if (data.get("ifDescr") instanceof List) {
@@ -448,6 +435,7 @@ public class SourceInventoryService {
 							}
 						});
 						exchange.getIn().setBody(Collections.singletonMap("Status","Total " + batchIfList.size() + " interfaces charging " + (Boolean)data.get("trace")));
+						sources.put(sourceIpAddr, source);
 						return;
 					}
 					if (data.containsKey("chargeable")) {
@@ -457,6 +445,7 @@ public class SourceInventoryService {
 							}
 						});
 						exchange.getIn().setBody(Collections.singletonMap("Status", "Total " + batchIfList.size() + " interfaces charging " + (Boolean)data.get("chargeable")));
+						sources.put(sourceIpAddr, source);
 						return;
 					}
 				}
@@ -466,8 +455,7 @@ public class SourceInventoryService {
 	
 	@Handler
 	public void removeSource(Exchange exchange) {
-		String sourceIpAddr = exchange.getIn()
-				.getHeader("source", String.class);
+		String sourceIpAddr = exchange.getIn().getHeader("source", String.class);
 		StringBuilder msg = new StringBuilder("source " + sourceIpAddr);
 		if (sources.containsKey(sourceIpAddr)) {
 			sources.remove(sourceIpAddr);
@@ -479,7 +467,7 @@ public class SourceInventoryService {
 		exchange.getIn().setBody(Collections.singletonMap("Status", msg.toString()));
 		
 		// save changes to recovery
-		setRecoveryState();
+		// setRecoveryState();
 		
 		log.info(msg.toString());
 	}
@@ -494,6 +482,7 @@ public class SourceInventoryService {
 	
 	public String logEndPoll() {
 		long polltime = polltimer.stop();
+		gaugeSources.submit("gauge.snmp.polltime", (double)polltime);
 		DoubleSummaryStatistics  stats = getReadySources().stream().collect(Collectors.summarizingDouble(SnmpSource::getPollResponse));
 		gaugeSources.submit("gauge.snmp.response.min",stats.getMin());
 		gaugeSources.submit("gauge.snmp.response.max",stats.getMax());
@@ -502,69 +491,11 @@ public class SourceInventoryService {
 		gaugeSources.submit("gauge.snmp.sources.down", (double)getDownSources().size());
 		counterSources.increment("counter.snmp.poll");
 		int totalCounters = getReadySources().stream().collect(Collectors.summingInt(s->s.getInterfaces().size()));
+		gaugeSources.submit("gauge.snmp.counters", (double)totalCounters);
+		double cps = (totalCounters*1000/polltime);
+		gaugeSources.submit("gauge.snmp.cps", cps);
 		return String.format("completed in %d ms, collected %d counters from %d sources (%.2f cps)", 
-				polltime, totalCounters, getReadySources().size(), (double)(totalCounters*1000/polltime));
+				polltime, totalCounters, getReadySources().size(), cps);
 	}
 	
-	@SuppressWarnings("unchecked")
-	@PostConstruct
-	protected void getRecoveryState() {
-
-		if (persistFileName == null || persistFileName.equalsIgnoreCase("none"))
-			return;
-
-		File recoveryFile = new File(persistFileName);
-		if (recoveryFile.exists() && recoveryFile.canRead()
-				&& sources.isEmpty()) {
-			try (FileInputStream fis = new FileInputStream(recoveryFile);
-					ObjectInput input = new ObjectInputStream(
-							new BufferedInputStream(fis));) {
-				sources = (Map<String, SnmpSource>) input.readObject();
-			} catch (ClassNotFoundException ex) {
-				log.error("get recovery", ex);
-				return;
-			} catch (IOException e) {
-				log.error("error read recoveryFile " + persistFileName, e);
-				return;
-			}
-			log.info("read recoveryState from file: " + persistFileName);
-		}
-	}
-
-	/**
-	 * write sources to recovery file
-	 */
-	@Handler
-	public synchronized void setRecoveryState() {
-
-		if (persistFileName == null || persistFileName.equalsIgnoreCase("none"))
-			return;
-
-		if (sources.isEmpty())
-			return;
-
-		File recoveryFile = new File(persistFileName);
-		File tmpFile = new File(persistFileName + ".tmp");
-		if (tmpFile.exists()) {
-			log.warn("remove abnormal temp file {}", tmpFile.getName());
-			tmpFile.delete();
-		}
-
-		try (FileOutputStream fos = new FileOutputStream(tmpFile);
-				ObjectOutput output = new ObjectOutputStream(
-						new BufferedOutputStream(fos));) {
-			output.writeObject(sources);
-			output.flush();
-			fos.getFD().sync();
-			output.close();
-			if (!FileUtil.renameFile(tmpFile, recoveryFile, true)) {
-				log.error("can not rename temp file");
-			}
-		} catch (IOException e) {
-			log.error("set recovery exception:", e);
-			return;
-		}
-		log.info("store recoveryState to file: " + persistFileName);
-	}
-
 }
