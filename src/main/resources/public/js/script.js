@@ -1,23 +1,27 @@
-bootstrap_alert = function() {}
+bootstrap_alert = function() {
+}
 bootstrap_alert.warning = function(message, alert, timeout) {
-	$('<div id="floating_alert" class="alert alert-'
-		+ alert
-		+ ' fade in"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>'
-		+ message + '&nbsp;&nbsp;</div>').appendTo('body');
+	$(
+			'<div id="floating_alert" class="alert alert-'
+					+ alert
+					+ ' fade in"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>'
+					+ message + '&nbsp;&nbsp;</div>').appendTo('body');
 	$(".alert").fadeOut(timeout);
 }
 
 function clusterInfo() {
 	$.ajax({
-		url : "/api/v1/cluster/leader",
+		url : "/api/v1/cluster/nodeStatus",
 		success : function(answer) {
-			if (answer.isLeader) {
-				$('#clusterInfo').text("Master");
-			} else {
-				$('#clusterInfo').text("Slave");
-			}
+			$('#clusterInfo').text(answer.Status);
 		}
 	});
+}
+
+
+function addslashes(str) {
+	return (str + '').replace(/[\\"']/g, '\\$&').replace(/\u0000/g,
+			'\\0');
 }
 
 // fmtbytes

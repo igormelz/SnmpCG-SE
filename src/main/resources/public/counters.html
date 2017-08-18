@@ -45,35 +45,30 @@
 	<!-- page content -->
 	<div class="container">
 		<div class="row">
-			<ul class="list-group">
-				<li class="list-group-item small">
-					<div class="btn-group btn-group-sm" role="group" aria-label="View">
-						<button title="view chargeable" type="button"
-							class="btn btn-success active" id="ifChargeable">
-							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-							Chargeable <span id="chargeableCount" class="badge">0</span>
-						</button>
-						<button title="view trace" type="button" class="btn btn-info"
-							id="ifTraced">
-							<span class="glyphicon glyphicon-filter" aria-hidden="true"></span>
-							Trace <span id="traceCount" class="badge">0</span>
-						</button>
-					</div>
-				</li>
+			<ul class="nav nav-pills">
+				<li><a href="#" title="view chargeable" type="button"
+					class="text-primary" id="ifChargeable"> <span
+						class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+						Chargeable <span id="chargeableCount" class="badge">0</span>
+				</a></li>
+				<li><a href="#" title="view trace"  class="text-info"
+					id="ifTraced"> <span class="glyphicon glyphicon-filter"
+						aria-hidden="true"></span> Trace <span id="traceCount"
+						class="badge">0</span>
+				</a></li>
 			</ul>
 		</div>
+		<p/>
 		<div class="row">
 			<table id="tbl_data" class="table table-condensed">
 				<thead>
 					<tr>
-						<th></th>
-						<th>ifDescr</th>
-						<th>pollTime</th>
-						<th>Mbps In</th>
-						<th>Mbps Out</th>
-						<th>bytes In</th>
-						<th>bytes Out</th>
-						<th>tags</th>
+						<td></td>
+						<td>Source</td>
+            <td>SourceInfo</td>						
+						<td><b>ifDescr</b></td>
+            <td><b>ChargingInfo</b></td>
+						<td></td>
 					</tr>
 				</thead>
 				<tbody>
@@ -109,35 +104,28 @@
 								dataSrc : function(iftable) {
 									iftable
 											.forEach(function(ifEntry) {
-												ifEntry.status = (ifEntry.up) ? "<label class=\"label label-info\">up</label> "
+												//source 
+												ifEntry.sourceName = "<a title=\"click to view interfaces\" href=\"view.html?ip="+ifEntry.source.ipAddress
+						                            + "\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a>";
+						            ifEntry.sourceName += "&nbsp;<span>"+((ifEntry.source.sysName) ? ifEntry.source.sysName+" ["+ifEntry.source.ipAddress+"]":ifEntry.source.ipAddress)+"</span>";
+						            ifEntry.sourceInfo = "";
+						            Object.keys(ifEntry.source.tags).forEach(function(item) {
+                          ifEntry.sourceInfo += "<span title='"+item+"'>";
+                          ifEntry.sourceInfo += ifEntry.source.tags[item]+"</span>&nbsp;";
+                        });
+												
+						            ifEntry.status = (ifEntry.up) ? "<label class=\"label label-info\">up</label> "
 														: "<label class=\"label label-warning\">down</label> ";
-												ifEntry.ifcharge = ifEntry.ifdescr
-														+ ((ifEntry.ifalias) ? " ("
-																+ ifEntry.ifalias
-																+ ")"
-																: "");
-												ifEntry.ifcharge += "<br/><a title=\"click to view interfaces\" href=\"view.html?ip="
-														+ ifEntry.Ip
-														+ "\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a> ";
-												ifEntry.ifcharge += "<small>"
-														+ (ifEntry.sysName) ? ifEntry.sysName
-														+ " ["
-														+ ifEntry.Ip
-														+ "]"
-														: ifEntry.Ip
-																+ "</small>";
-												ifEntry.tags = (ifEntry.chargeable) ? "<a title=\"click to uncharge\" class=\"label label-success small\" onclick=\"chargeOff('"
-														+ ifEntry.Ip
-														+ "','"
-														+ ifEntry.ifdescr
-														+ "')\"><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> charge</a>"
-														: "";
-												ifEntry.tags += (ifEntry.trace) ? " <a title=\"click to untrace\" class=\"label label-info small\" onclick=\"traceOff('"
-														+ ifEntry.Ip
-														+ "','"
-														+ ifEntry.ifdescr
-														+ "')\"><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> trace</a>"
-														: "";
+												
+											  ifEntry.ifcharge = ifEntry.ifDescr+((ifEntry.ifAlias) ? " ("+ifEntry.ifAlias+")":"");
+							
+												ifEntry.chargeInfo = "";
+										    Object.keys(ifEntry.tags).forEach( function(item) {
+										    	  ifEntry.chargeInfo += "<span title='"+item+"'>";
+										    	  ifEntry.chargeInfo += ifEntry.tags[item]+ "</span>&nbsp;";
+										    });
+												ifEntry.action = (ifEntry.chargeable) ? "<a title=\"click to uncharge\" class=\"label label-success small\"><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> charge</a>":"";
+												ifEntry.action += (ifEntry.trace) ? " <a title=\"click to untrace\" class=\"label label-info small\"><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> trace</a>":"";
 												ifEntry.rate_in = bandwidth(
 														ifEntry.pollInOctets,
 														ifEntry.pollDuration);
@@ -157,11 +145,14 @@
 							},
 							lengthMenu : [ [ 30, 50, 100, -1 ],
 									[ 30, 50, 100, "All" ] ],
-							columns : [ {
-								data : "status"
-							}, {
-								data : "ifcharge"
-							}, {
+							columns : [ 
+							            {data : "status"}, 
+							            {data : "sourceName"}, 
+				                  {data : "sourceInfo"},							            
+							            {data : "ifcharge"},
+
+							            {data : "chargeInfo"},
+				    	  /*
 								data : "pollTime",
 								"orderable" : false,
 								"searchable" : false
@@ -179,10 +170,9 @@
 								data : "bytes_out",
 								"orderable" : false,
 								"searchable" : false
-							}, {
-								data : "tags",
-								"searchable" : false
-							} ],
+							}, { */
+								{data : "action","searchable":false,"orderable" : false}
+							],
 							"order" : [ [ 3, 'desc' ] ]
 						});
 

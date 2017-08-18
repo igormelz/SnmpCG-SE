@@ -15,37 +15,42 @@ import com.hazelcast.core.Member;
 @Component
 public class ClusterInfoService {
 
-	private HazelcastInstance instance;
+    private HazelcastInstance instance;
 
-	public ClusterInfoService(HazelcastInstance instance) {
-		this.instance = instance;
-	}
+    public ClusterInfoService(HazelcastInstance instance) {
+        this.instance = instance;
+    }
 
-	@Handler 
-	public Map<String,Object> getLeaderStatus() {
-		Member member = getLastMember();
-		return Collections.singletonMap("isLeader", member.localMember());
-	}
-	
-	@Handler 
-	public Map<String,Object> getMaster() {
-		Member member = getLastMember();
-		return Collections.singletonMap("Master","["+ member.getAddress().getHost()+"]:"+member.getAddress().getPort());
-	}
-	
-	@Handler
-	public List<Map<String, Object>> getStatus() {
-		return instance.getCluster().getMembers().stream().map(m -> {
-			Map<String, Object> map = new HashMap<String, Object>();
-			map.put("Host", m.getAddress().getHost());
-			map.put("Port", m.getAddress().getPort());
-			map.put("Status", m.getUuid().equalsIgnoreCase(getLastMember().getUuid())?"Master":"Slave");
-			map.put("isLocal", m.localMember());
-			return map;
-		}).collect(Collectors.toList());
-	}
-	
-	protected Member getLastMember() {
-		return instance.getCluster().getMembers().iterator().next();
-	}
+    @Handler
+    public Map<String, Object> getNodeStatus() {
+        if (instance.getCluster().getMembers().size() == 1) {
+            return Collections.singletonMap("Status", "Standalone");
+        } else if (getLastMember().localMember()) {
+            return Collections.singletonMap("Status", "Master");
+        } else {
+            return Collections.singletonMap("Status", "Slave");
+        }
+    }
+
+    @Handler
+    public Map<String, Object> getMaster() {
+        Member member = getLastMember();
+        return Collections.singletonMap("Master", "[" + member.getAddress().getHost() + "]:" + member.getAddress().getPort());
+    }
+
+    @Handler
+    public List<Map<String, Object>> getStatus() {
+        return instance.getCluster().getMembers().stream().map(m -> {
+            Map<String, Object> map = new HashMap<String, Object>();
+            map.put("Host", m.getAddress().getHost());
+            map.put("Port", m.getAddress().getPort());
+            map.put("Status", m.getUuid().equalsIgnoreCase(getLastMember().getUuid()) ? "Master" : "Slave");
+            map.put("isLocal", m.localMember());
+            return map;
+        }).collect(Collectors.toList());
+    }
+
+    protected Member getLastMember() {
+        return instance.getCluster().getMembers().iterator().next();
+    }
 }
