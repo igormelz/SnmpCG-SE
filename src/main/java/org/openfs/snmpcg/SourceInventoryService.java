@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -53,16 +54,16 @@ public class SourceInventoryService {
 
     @Value("${snmpcg.tagkeys.source:RouterId}")
     private String sourceTagKeysProperties;
-    
+
     @Value("${snmpcg.tagkeys.interface:CircuitId}")
     private String interfaceTagKeysProperties;
-    
+
     @Autowired
     private ConcurrentMap<String, SnmpSource> sources;
 
     @Autowired
     private IMap<String, Object> config;
-    
+
     private SimpleDateFormat timeStampFormat;
     private final static Pattern IPADDR_PATTERN = Pattern.compile("\\d+.\\d+.\\d+.\\d+");
 
@@ -78,8 +79,8 @@ public class SourceInventoryService {
 
     @PostConstruct
     public void initConfig() {
-        config.putIfAbsent("sourceTagKeys", Arrays.asList(sourceTagKeysProperties.split(",")));
-        config.putIfAbsent("interfaceTagKeys", Arrays.asList(interfaceTagKeysProperties.split(",")));
+        config.putIfAbsent("sourceTagKeys", new LinkedHashSet<String>(Arrays.asList(sourceTagKeysProperties.split(","))));
+        config.putIfAbsent("interfaceTagKeys", new LinkedHashSet<String>(Arrays.asList(interfaceTagKeysProperties.split(","))));
         config.putIfAbsent("snmpCommunity", community);
         config.putIfAbsent("snmpRetries", retries);
         config.putIfAbsent("snmpTimeout", timeout);
@@ -95,7 +96,7 @@ public class SourceInventoryService {
             fieldSeparator = config.get("cdrFieldSeparator").toString();
         }
     }
-    
+
     @Handler
     public void addSource(Exchange exchange) {
         StringBuilder sb = new StringBuilder("add source ");
@@ -145,7 +146,7 @@ public class SourceInventoryService {
         if (data.get("timeout") != null) {
             hostTimeout = (int)data.get("timeout");
         }
-       
+
         SnmpSource source = new SnmpSource(host, hostCommunity, hostRetries, hostTimeout);
         if (source != null) {
             if (data.get("tags") != null && data.get("tags") instanceof Map) {
@@ -175,7 +176,7 @@ public class SourceInventoryService {
     public void getConfig(Exchange exchange) {
         exchange.getIn().setBody(config);
     }
-    
+
     @Handler
     public void getSources(Exchange exchange) {
 
@@ -191,21 +192,21 @@ public class SourceInventoryService {
             exchange.getIn().setBody(sources.values().stream().collect(Collectors.groupingBy(SnmpSource::getStatus, Collectors.counting())));
             return;
         }
-      
+
         // return list sources
         exchange.getIn().setBody(sources.values().stream().map(mapSource).collect(Collectors.toList()));
     }
 
     Function<SnmpSource, Map<String, Object>> mapSource = source -> {
         Map<String, Object> map = new HashMap<String, Object>();
-        map.put("Ip", source.getIpAddress());
+        map.put("ipAddress", source.getIpAddress());
         map.put("Status", source.getStatus());
         map.put("sysUptime", source.getSysUptime());
         map.put("sysName", source.getSysName());
         map.put("sysDescr", source.getSysDescr());
         map.put("snmpCommunity", source.getTarget().getCommunity().toString());
         map.put("snmpRetries", source.getTarget().getRetries());
-        map.put("snmpTimeout", source.getTarget().getTimeout()/1000L);
+        map.put("snmpTimeout", source.getTarget().getTimeout() / 1000L);
         map.put("ifNumber", source.getIftable().size());
         map.put("pollTime", source.getPollTime());
         long counter_up = source.getInterfaces().stream().filter(SnmpInterface::isUp).count();
@@ -249,12 +250,12 @@ public class SourceInventoryService {
 
     Function<SnmpSource, List<Map<String, Object>>> mapInterface = source -> {
         List<Map<String, Object>> answer = source.getInterfaces().stream().map(e -> {
-            
+
             Map<String, Object> srcmap = new HashMap<String, Object>();
             srcmap.put("ipAddress", source.getIpAddress());
             srcmap.put("sysName", source.getSysName());
             srcmap.put("tags", source.getTags());
-            
+
             Map<String, Object> iface = new HashMap<String, Object>();
             iface.put("source", srcmap);
             iface.put("pollTime", source.getPollTime());
@@ -357,11 +358,15 @@ public class SourceInventoryService {
         getReadySources().stream().forEach(source -> {
             source.getInterfaces().stream().filter(SnmpInterface::isChargeable).forEach(ifEntry -> {
                 sb.append(source.getIpAddress()).append(fieldSeparator);
-                sb.append(source.getTags().get(((List<String>)config.get("sourceTagKeys")).get(0)).replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
+                for (String skey : (LinkedHashSet<String>)config.get("sourceTagKeys")) {
+                    sb.append(source.getTags().get(skey).replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
+                }
                 sb.append(ifEntry.getIfDescr()).append(fieldSeparator);
-                sb.append(ifEntry.getTags().get(((List<String>)config.get("interfaceTagKeys")).get(0)).replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
-                sb.append(ifEntry.getIfAlias().replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
-                if (ifEntry.getPortType()==SnmpConstants.EGRESS) {
+                for (String ikey : (LinkedHashSet<String>)config.get("interfaceTagKeys")) {
+                    sb.append(ifEntry.getTags().get(ikey).replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
+                }
+                //sb.append(ifEntry.getIfAlias().replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
+                if (ifEntry.getPortType() == SnmpConstants.EGRESS) {
                     sb.append(ifEntry.getPollOutOctets()).append(fieldSeparator);
                     sb.append(ifEntry.getPollInOctets()).append(fieldSeparator);
                 } else {
@@ -501,7 +506,7 @@ public class SourceInventoryService {
                     ifEntry.setPortType((int)data.get("portType"));
                     updated = true;
                 }
-                
+
                 if (data.get("tags") != null && data.get("tags") instanceof Map) {
                     @SuppressWarnings("unchecked")
                     Map<String, String> tag = (Map<String, String>)data.get("tags");
