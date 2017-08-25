@@ -1,15 +1,19 @@
 bootstrap_alert = function() {
 }
-bootstrap_alert.warning = function(message, alert, timeout) {
-	$(
-			'<div id="floating_alert" class="alert alert-'
-					+ alert
-					+ ' fade in"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">×</button>'
-					+ message + '&nbsp;&nbsp;</div>').appendTo('body');
-	$(".alert").fadeOut(timeout);
+
+bootstrap_alert.info = function(message, timeout) {
+	$("div#action-success").html("<p>" + message + "</p>");
+	$("div#action-success").show();
+	$("div#action-success").fadeOut(timeout);
 }
 
-function clusterInfo() {
+bootstrap_alert.error = function(message, timeout) {
+	$("div#action-error").html("<p>" + message + "</p>");
+	$("div#action-error").show();
+	$("div#action-error").fadeOut(timeout);
+}
+
+var clusterInfo = function() {
 	$.ajax({
 		url : "/api/v1/cluster/nodeStatus",
 		success : function(answer) {
@@ -18,9 +22,39 @@ function clusterInfo() {
 	});
 }
 
+function showTagsInfo(tags) {
+	var answer = "";
+	Object.keys(tags).forEach(function(item) {
+		answer += "<abbr title='" + item + "'>" + tags[item] + "</abbr>&nbsp;";
+	});
+	return answer;
+}
+
+function getChargingStats() {
+	$.ajax({
+		url : "/api/v1/interfaces?stats",
+		success : function(stats) {
+			$("#chargeableCount").text(stats.chargeableCount);
+			$("#traceCount").text(stats.traceCount);
+		}
+	});
+}
+
+
+function enableDefaultValue(e) {
+	if (e) {
+		$('#community').prop('disabled', true);
+		$('#retries').prop('disabled', true);
+		$('#timeout').prop('disabled', true);
+	} else {
+		$('#community').prop('disabled', false);
+		$('#retries').prop('disabled', false);
+		$('#timeout').prop('disabled', false);
+	}
+}
 
 function addslashes(str) {
-	return (str + '').replace(/[\\"']/g, '\\$&').replace(/\u0000/g,
+	return (str + '').trim().replace(/[\\"']/g, '\\$&').replace(/\u0000/g,
 			'\\0');
 }
 
@@ -98,4 +132,33 @@ function getUrlParameter(sParam) {
 			return sParameterName[1];
 		}
 	}
+}
+
+// format charging interfaces
+function formatChargingInterface(ifEntry) {
+	// source
+	ifEntry.sourceName = "<a title=\"click to view interfaces\" href=\"view.html?ip="
+			+ ifEntry.source.ipAddress
+			+ "\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a>";
+	ifEntry.sourceName += "&nbsp;<span>"
+			+ ifEntry.source.ipAddress
+			+ ((ifEntry.source.sysName) ? "<br><small>("
+					+ ifEntry.source.sysName + ")</small></span>" : "</span>");
+	ifEntry.sourceInfo = showTagsInfo(ifEntry.source.tags);
+
+	ifEntry.status = (ifEntry.up) ? "<lable class='label label-info'><span class=\"glyphicon glyphicon-ok-sign\"></span> Up</label>"
+			: "<label class='label label-warning'><span class='glyphicon glyphicon-exclamation-sign' title='down'></span> Down</label>";
+
+	ifEntry.portType = (ifEntry.portType == 0) ? "<span class='label label-primary'>PE Downlink</span>"
+			: "<span class='label label-info'>CPE Uplink</span>";
+
+	ifEntry.chargeInfo = showTagsInfo(ifEntry.tags);
+
+	ifEntry.action = "<a href='#' title=\"click to trace off\" id='traceBtn'>";
+	if (ifEntry.trace) {
+		ifEntry.action += "<span class=\"glyphicon glyphicon-check\" aria-hidden=\"true\"></span></a>";
+	} else {
+		ifEntry.action += "<span class=\"glyphicon glyphicon-unchecked\" aria-hidden=\"true\"></span></a>";
+	}
+
 }
