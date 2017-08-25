@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="">
+<meta name="author" content="">
+<link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon' />
+
+<title>SnmpCG Admin: Charging Interfaces</title>
+
+<!-- Bootstrap Core CSS -->
+<link href="css/vendor/bootstrap.min.css" rel="stylesheet">
+<link href="css/dataTables.bootstrap.min.css" rel="stylesheet">
+<link href="css/style.css" rel="stylesheet" />
+
+<!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
+<!--[if lt IE 9]>
+      <script src="js/vendor/html5shiv.js"></script>
+      <script src="js/vendor/respond.min.js"></script>
+    <![endif]-->
+</head>
+<body>
+	<!-- Navigation -->
+	<nav class="navbar navbar-default" role="navigation">
+		<div class="container">
+			<!-- brand -->
+			<div class="navbar-header">
+				<a class="navbar-brand" href="index.html">SnmpCG</a>
+			</div>
+			<!-- nav links -->
+			<ul class="nav navbar-nav">
+				<li><a href="index.html">Sources</a></li>
+				<li class="active"><a href="charging.html">Charging
+						Interfaces</a></li>
+			</ul>
+			<ul class="nav navbar-nav navbar-right">
+				<li><a href="cluster.html">Node status: <strong
+						id="clusterInfo"></strong></a></li>
+			</ul>
+		</div>
+		<!-- /.container -->
+	</nav>
+
+	<!-- page content -->
+	<div class="container">
+		<div class="row">
+			<div class="col-sm-12">
+				<div class="alert alert-danger fade in" id="action-error"
+					style="display: none;"></div>
+				<div class="alert alert-success fade in" id="action-success"
+					style="display: none;"></div>
+			</div>
+		</div>
+		<div class="row">
+			<ul class="nav nav-pills">
+				<li><a href="#" title="view chargeable" type="button"
+					class="text-primary" id="ifChargeable"> <span
+						class="glyphicon glyphicon-filter" aria-hidden="true"></span>
+						Chargeable <span id="chargeableCount" class="badge">0</span>
+				</a></li>
+				<li><a href="#" title="view trace" class="text-info"
+					id="ifTraced"> <span class="glyphicon glyphicon-filter"
+						aria-hidden="true"></span> Trace <span id="traceCount"
+						class="badge">0</span>
+				</a></li>
+			</ul>
+		</div>
+		<p />
+		<div class="row">
+			<table id="chargingTable" class="table table-condensed">
+				<thead>
+					<tr>
+						<td></td>
+						<td>Source</td>
+						<td>SourceInfo</td>
+						<td>ifDescr</td>
+						<td>CharginType</td>
+						<td>ChargingInfo</td>
+						<td>Trace</td>
+					</tr>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+		</div>
+	</div>
+	<!-- /.container -->
+
+	<script src="js/vendor/jquery.min.js"></script>
+	<script src="js/vendor/bootstrap.min.js"></script>
+	<script src="js/vendor/datatables.min.js"></script>
+	<!-- script src="js/jquery.dataTables.min.js"></script -->
+	<script src="js/vendor/dataTables.bootstrap.min.js"></script>
+	<script src="js/script.js"></script>
+	<script>
+		$(document)
+				.ready(
+						function() {
+							var chTable = $('#chargingTable')
+									.DataTable(
+											{
+												"ajax" : {
+													"url" : "/api/v1/interfaces?chargeable",
+													"dataSrc" : function(data) {
+														data
+																.forEach(function(
+																		element) {
+																	formatChargingInterface(element);
+																});
+														return data;
+													}
+												},
+												"lengthMenu" : [
+														[ 30, 50, 100, -1 ],
+														[ 30, 50, 100, "All" ] ],
+												"columns" : [ {
+													"data" : "status"
+												}, {
+													"data" : "sourceName"
+												}, {
+													"data" : "sourceInfo"
+												}, {
+													"data" : "ifDescr"
+												}, {
+													"data" : "portType"
+												}, {
+													"data" : "chargeInfo"
+												}, {
+													"data" : "action",
+													"searchable" : false,
+													"orderable" : false
+												} ],
+												"order" : [ [ 3, 'desc' ] ]
+											});
+
+							$('#chargingTable tbody')
+									.on(
+											'click',
+											'tr #traceBtn',
+											function() {
+												var ifEntry = chTable.row(
+														$(this).closest('tr'))
+														.data();
+												var jsonData = JSON
+														.stringify({
+															"ifDescr" : ifEntry.ifDescr,
+															"trace" : (!ifEntry.trace)
+														});
+												console
+														.log("source:"
+																+ ifEntry.source.ipAddress
+																+ " update trace: "
+																+ jsonData);
+												$
+														.ajax({
+															url : "/api/v1/sources/"
+																	+ ifEntry.source.ipAddress
+																	+ "/interfaces",
+															type : "PUT",
+															contentType : "application/json",
+															data : jsonData,
+															success : function(
+																	result) {
+																chTable.ajax
+																		.reload();
+																getChargingStats();
+																bootstrap_alert
+																		.info(
+																				result.Status,
+																				2000);
+															}
+														});
+
+											});
+
+							$('#ifChargeable')
+									.on(
+											'click',
+											function() {
+												getChargingStats();
+												chTable.ajax
+														.url(
+																"/api/v1/interfaces?chargeable")
+														.load();
+											});
+
+							$('#ifTraced').on(
+									'click',
+									function() {
+										getChargingStats();
+										chTable.ajax.url(
+												"/api/v1/interfaces?trace")
+												.load();
+									});
+
+							getChargingStats();
+							clusterInfo();
+						});
+	</script>
+</body>
+</html>
