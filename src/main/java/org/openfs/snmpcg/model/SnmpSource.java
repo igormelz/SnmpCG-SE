@@ -9,149 +9,176 @@ import java.util.stream.Collectors;
 import org.snmp4j.CommunityTarget;
 
 public final class SnmpSource implements Serializable {
-	private static final long serialVersionUID = 5914824756678341630L;
-	private final String ipAddress;
-	private SnmpSourceStatus status = SnmpSourceStatus.UNKNOWN;
-	private long sysUptime;
-	private String sysDescr;
-	private String sysName;
-	private String sysLocation;
-	private final Map<String,SnmpInterface> iftable = new HashMap<String,SnmpInterface>();
-	private long pollTime;
-	private final String community;
-	private final int retries;
-	private final int timeout;
-	transient private CommunityTarget target;
-	transient private long pollDuration;
-	transient private boolean skipDelta = true;
-	transient private long pollResponse;
-	
-	public SnmpSource(String ipAddress, String community, int retries, int timeout) {
-		this.ipAddress = ipAddress;
-		this.community = community;
-		this.timeout = timeout;
-		this.retries = retries;
-		this.target = SnmpCommunityTarget.createTarget(ipAddress, community, retries, timeout);
-	}
-	
-	public SnmpSourceStatus getStatus() {
-		return status;
-	}
+    private static final long serialVersionUID = 5914824756678341630L;
+    private final String ipAddress;
+    private String status = SnmpConstants.UNKNOWN;
+    private long sysUptime;
+    private String sysDescr;
+    private String sysName;
+    private String sysLocation;
+    private final Map<String, SnmpInterface> iftable = new HashMap<String, SnmpInterface>();
+    private long pollTime;
+    private String community;
+    private int retries;
+    private int timeout;
+    transient private CommunityTarget target;
+    private long pollDuration;
+    private boolean skipDelta = true;
+    private long pollResponse;
+    private final Map<String, String> tags = new HashMap<String, String>();
 
-	public CommunityTarget getTarget() {
-		if (target == null) {
-			target = SnmpCommunityTarget.createTarget(ipAddress, community, retries, timeout);
-		}
-		return target;
-	}
+    public SnmpSource(String ipAddress, String community, int retries, int timeout) {
+        this.ipAddress = ipAddress;
+        this.community = community;
+        this.timeout = timeout;
+        this.retries = retries;
+        this.target = SnmpCommunityTarget.createTarget(ipAddress, community, retries, timeout);
+    }
 
-	public String getSysDescr() {
-		return sysDescr;
-	}
+    public String getStatus() {
+        return status;
+    }
 
-	public String getSysLocation() {
-		return sysLocation;
-	}
+    public CommunityTarget getTarget() {
+        if (target == null) {
+            target = SnmpCommunityTarget.createTarget(ipAddress, community, retries, timeout);
+        }
+        return target;
+    }
 
-	public SnmpInterface getSnmpInterface(String ifdescr) {
-		SnmpInterface entry = iftable.get(ifdescr);
-		if( entry == null ) {
-			entry = new SnmpInterface(ifdescr);
-			iftable.putIfAbsent(ifdescr, entry);
-		}
-		return entry;
-	}
+    public String getSysDescr() {
+        return sysDescr;
+    }
 
-	public void removeSnmpInterace(String ifdescr) {
-		if (iftable.containsKey(ifdescr)) {
-			iftable.remove(ifdescr);
-		}
-	}
-	
-	public Map<String,SnmpInterface> getIftable() {
-		return iftable;
-	}
+    public String getSysLocation() {
+        return sysLocation;
+    }
 
-	public List<SnmpInterface> getInterfaces() {
-		return iftable.values().stream()
-				.collect(Collectors.toList());
-	}
+    public SnmpInterface getSnmpInterface(String ifdescr) {
+        SnmpInterface entry = iftable.get(ifdescr);
+        if (entry == null) {
+            entry = new SnmpInterface(ifdescr);
+            iftable.putIfAbsent(ifdescr, entry);
+        }
+        return entry;
+    }
 
-	public void setStatus(SnmpSourceStatus status) {
-		this.status = status;
-	}
+    public void removeSnmpInterace(String ifdescr) {
+        if (iftable.containsKey(ifdescr)) {
+            iftable.remove(ifdescr);
+        }
+    }
 
-	@Override
-	public String toString() {
-		return String.format("%s|%s|%s|%s"
-				,ipAddress
-				,target.getCommunity().toString()
-				,status
-				,sysName
-				);
-	}
+    public Map<String, SnmpInterface> getIftable() {
+        return iftable;
+    }
 
-	public void setSysDescr(String sysDescr) {
-		this.sysDescr = sysDescr;
-	}
+    public List<SnmpInterface> getInterfaces() {
+        return iftable.values().stream().collect(Collectors.toList());
+    }
 
-	public String getSysName() {
-		return sysName;
-	}
+    public void setStatus(String status) {
+        this.status = status;
+    }
 
-	public void setSysName(String sysName) {
-		this.sysName = sysName;
-	}
+    @Override
+    public String toString() {
+        return String.format("%s|%s|%s|%s", ipAddress, target.getCommunity().toString(), status, sysName);
+    }
 
-	public long getSysUptime() {
-		return sysUptime;
-	}
+    public void setSysDescr(String sysDescr) {
+        this.sysDescr = sysDescr;
+    }
 
-	public void setSysUptime(long sysUptime) {
-		this.sysUptime = sysUptime;
-	}
-	
-	public void setSysLocation(String sysLocation) {
-		this.sysLocation = sysLocation;
-	}
+    public String getSysName() {
+        return sysName;
+    }
 
-	public void resetSnmpInterfaceCounters() {
-		iftable.values().forEach(SnmpInterface::resetCounters);
-	}
-	
-	public long getPollTime() {
-		return pollTime;
-	}
+    public void setSysName(String sysName) {
+        this.sysName = sysName;
+    }
 
-	public void setPollTime(long pollTime) {
-		this.pollTime = pollTime;
-	}
+    public long getSysUptime() {
+        return sysUptime;
+    }
 
-	public String getIpAddress() {
-		return ipAddress;
-	}
+    public void setSysUptime(long sysUptime) {
+        this.sysUptime = sysUptime;
+    }
 
-	public long getPollDuration() {
-		return pollDuration;
-	}
+    public void setSysLocation(String sysLocation) {
+        this.sysLocation = sysLocation;
+    }
 
-	public void setPollDuration(long pollDuration) {
-		this.pollDuration = pollDuration;
-	}
+    public void resetSnmpInterfaceCounters() {
+        iftable.values().forEach(SnmpInterface::resetCounters);
+    }
 
-	public boolean isSkipDelta() {
-		return skipDelta;
-	}
+    public long getPollTime() {
+        return pollTime;
+    }
 
-	public void setSkipDelta(boolean skipDelta) {
-		this.skipDelta = skipDelta;
-	}
+    public void setPollTime(long pollTime) {
+        this.pollTime = pollTime;
+    }
 
-	public long getPollResponse() {
-		return pollResponse;
-	}
-	
-	public void setPollResponse(long t) {
-		pollResponse = t;
-	}
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public long getPollDuration() {
+        return pollDuration;
+    }
+
+    public void setPollDuration(long pollDuration) {
+        this.pollDuration = pollDuration;
+    }
+
+    public boolean isSkipDelta() {
+        return skipDelta;
+    }
+
+    public void setSkipDelta(boolean skipDelta) {
+        this.skipDelta = skipDelta;
+    }
+
+    public long getPollResponse() {
+        return pollResponse;
+    }
+
+    public void setPollResponse(long t) {
+        pollResponse = t;
+    }
+
+    public Map<String, String> getTags() {
+        return tags;
+    }
+
+    public void addTags(Map<String, String> tag) {
+        tags.clear();
+        tags.putAll(tag);
+    }
+
+    public void removeTags() {
+        tags.clear();
+    }
+
+    public void replaceTag(String tag, String value) {
+        tags.replace(tag, value);
+    }
+
+    public void setCommunity(String community) {
+        this.community = community;
+        target = SnmpCommunityTarget.createTarget(ipAddress, community, retries, timeout);
+    }
+
+    public void setRetries(int retries) {
+        this.retries = retries;
+        target = SnmpCommunityTarget.createTarget(ipAddress, community, retries, timeout);
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+        target = SnmpCommunityTarget.createTarget(ipAddress, community, retries, timeout);
+    }
 }

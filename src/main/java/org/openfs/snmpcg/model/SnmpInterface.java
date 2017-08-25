@@ -1,155 +1,185 @@
 package org.openfs.snmpcg.model;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 
 public final class SnmpInterface implements Serializable {
-	private static final long serialVersionUID = 2654773100327667716L;
-	private final String ifDescr;
-	transient private int ifIndex;
-	transient private String ifName;
-	transient private String ifAlias;
-	transient private int ifAdminStatus;
-	transient private int ifOperStatus;
-	private boolean chargeable = false;
-	private boolean trace = false;
-	private SnmpCounter ifInOctets = new SnmpCounter();
-	private SnmpCounter ifOutOctets = new SnmpCounter();
-	transient private long pollInOctets;
-	transient private long pollOutOctets;
-	transient private boolean marked = false;
+    private static final long serialVersionUID = 2654773100327667716L;
+    private final String ifDescr;
+    private int ifIndex;
+    private String ifName;
+    private String ifAlias;
+    private int ifAdminStatus;
+    private int ifOperStatus;
+    private boolean chargeable = false;
+    private boolean trace = false;
+    private SnmpCounter ifInOctets = new SnmpCounter();
+    private SnmpCounter ifOutOctets = new SnmpCounter();
+    private long pollInOctets;
+    private long pollOutOctets;
+    private boolean marked = false;
+    private final Map<String, String> tags = new HashMap<String, String>();
+    // ingress = 1 ; egress = 0
+    private int portType = SnmpConstants.EGRESS;
 
-	public SnmpInterface(String ifDescr) {
-		this.ifDescr = ifDescr;
-	}
+    public SnmpInterface(String ifDescr) {
+        this.ifDescr = ifDescr;
+    }
 
-	public int getIfAdminStatus() {
-		return ifAdminStatus;
-	}
+    public int getIfAdminStatus() {
+        return ifAdminStatus;
+    }
 
-	public void setIfAdminStatus(int ifAdminStatus) {
-		// reset counters
-		if (ifAdminStatus != 1) {
-			resetPollCounters();
-		}
-		this.ifAdminStatus = ifAdminStatus;
-	}
+    public void setIfAdminStatus(int ifAdminStatus) {
+        // reset counters
+        if (ifAdminStatus != 1) {
+            resetPollCounters();
+        }
+        this.ifAdminStatus = ifAdminStatus;
+    }
 
-	public void resetCounters() {
-		ifInOctets.reset();
-		ifOutOctets.reset();
-		resetPollCounters();
-	}
-	
-	public void resetPollCounters() {
-		pollInOctets = 0L;
-		pollOutOctets = 0L;
-	}
-	
-	public boolean isChargeable() {
-		return chargeable;
-	}
+    public void resetCounters() {
+        ifInOctets.reset();
+        ifOutOctets.reset();
+        resetPollCounters();
+    }
 
-	public void setChargeable(boolean polling) {
-		this.chargeable = polling;
-	}
+    public void resetPollCounters() {
+        pollInOctets = 0L;
+        pollOutOctets = 0L;
+    }
 
-	public SnmpCounter getIfInOctets() {
-		return ifInOctets;
-	}
+    public boolean isChargeable() {
+        return chargeable;
+    }
 
-	public void setIfInOctets(SnmpCounter ifInOctets) {
-		this.ifInOctets = ifInOctets;
-	}
+    public void setChargeable(boolean chargeable) {
+        this.chargeable = chargeable;
+        if (!chargeable) {
+            tags.clear();
+            portType = SnmpConstants.EGRESS;
+        }
+    }
 
-	public SnmpCounter getIfOutOctets() {
-		return ifOutOctets;
-	}
+    public SnmpCounter getIfInOctets() {
+        return ifInOctets;
+    }
 
-	public void setIfOutOctets(SnmpCounter ifOutOctets) {
-		this.ifOutOctets = ifOutOctets;
-	}
+    public void setIfInOctets(SnmpCounter ifInOctets) {
+        this.ifInOctets = ifInOctets;
+    }
 
-	public String getIfName() {
-		return ifName;
-	}
+    public SnmpCounter getIfOutOctets() {
+        return ifOutOctets;
+    }
 
-	public void setIfName(String ifName) {
-		this.ifName = ifName;
-	}
+    public void setIfOutOctets(SnmpCounter ifOutOctets) {
+        this.ifOutOctets = ifOutOctets;
+    }
 
-	public String getIfAlias() {
-		return ifAlias;
-	}
+    public String getIfName() {
+        return ifName;
+    }
 
-	public void setIfAlias(String ifAlias) {
-		this.ifAlias = ifAlias;
-	}
+    public void setIfName(String ifName) {
+        this.ifName = ifName;
+    }
 
-	public String getIfDescr() {
-		return ifDescr;
-	}
+    public String getIfAlias() {
+        return ifAlias;
+    }
 
-	public long getPollInOctets() {
-		return pollInOctets;
-	}
+    public void setIfAlias(String ifAlias) {
+        this.ifAlias = ifAlias;
+    }
 
-	public void setPollInOctets(long pollInOctets) {
-		this.pollInOctets = pollInOctets;
-	}
+    public String getIfDescr() {
+        return ifDescr;
+    }
 
-	public long getPollOutOctets() {
-		return pollOutOctets;
-	}
+    public long getPollInOctets() {
+        return pollInOctets;
+    }
 
-	public void setPollOutOctets(long pollOutOctets) {
-		this.pollOutOctets = pollOutOctets;
-	}
+    public void setPollInOctets(long pollInOctets) {
+        this.pollInOctets = pollInOctets;
+    }
 
-	public boolean isTrace() {
-		return trace;
-	}
+    public long getPollOutOctets() {
+        return pollOutOctets;
+    }
 
-	public void setTrace(boolean trace) {
-		this.trace = trace;
-	}
+    public void setPollOutOctets(long pollOutOctets) {
+        this.pollOutOctets = pollOutOctets;
+    }
 
-	public int getIfOperStatus() {
-		return ifOperStatus;
-	}
+    public boolean isTrace() {
+        return trace;
+    }
 
-	public void setIfOperStatus(int ifOperStatus) {
-		// reset counters
-		if (ifOperStatus != 1) {
-			resetPollCounters();
-		}
-		this.ifOperStatus = ifOperStatus;
-	}
+    public void setTrace(boolean trace) {
+        this.trace = trace;
+    }
 
-	public int getIfIndex() {
-		return ifIndex;
-	}
+    public int getIfOperStatus() {
+        return ifOperStatus;
+    }
 
-	public void setIfIndex(int ifIndex) {
-		this.ifIndex = ifIndex;
-	}
+    public void setIfOperStatus(int ifOperStatus) {
+        // reset counters
+        if (ifOperStatus != 1) {
+            resetPollCounters();
+        }
+        this.ifOperStatus = ifOperStatus;
+    }
 
-	public boolean isUp() {
-		return ifAdminStatus == 1 && ifOperStatus == 1;
-	}
+    public int getIfIndex() {
+        return ifIndex;
+    }
 
-	public boolean isDown() {
-		return !isUp();
-	}
-	
-	public boolean isMarked() {
-		return marked;
-	}
+    public void setIfIndex(int ifIndex) {
+        this.ifIndex = ifIndex;
+    }
 
-	public void setMarked(boolean mark) {
-		// reset counters
-		if (mark) {
-			resetPollCounters();
-		}
-		this.marked = mark;
-	}
+    public boolean isUp() {
+        return ifAdminStatus == 1 && ifOperStatus == 1;
+    }
+
+    public boolean isDown() {
+        return !isUp();
+    }
+
+    public boolean isMarked() {
+        return marked;
+    }
+
+    public void setMarked(boolean mark) {
+        // reset counters
+        if (mark) {
+            resetPollCounters();
+        }
+        this.marked = mark;
+    }
+
+    public Map<String, String> getTags() {
+        return tags;
+    }
+
+    public void addTags(Map<String, String> tag) {
+        tags.clear();
+        tags.putAll(tag);
+    }
+
+    public void removeTags() {
+        tags.clear();
+    }
+
+    public int getPortType() {
+        return portType;
+    }
+
+    public void setPortType(int portType) {
+        this.portType = portType;
+    }
 }
