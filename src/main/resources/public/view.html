@@ -8,19 +8,12 @@
 <meta name="author" content="">
 <link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon' />
 
-<title>SnmpCG - Admin Interface</title>
+<title>SnmpCG Admin: Source Interfaces</title>
 
 <!-- Bootstrap Core CSS -->
 <link href="css/vendor/bootstrap.min.css" rel="stylesheet">
 <link href="css/dataTables.bootstrap.min.css" rel="stylesheet">
 <link href="css/style.css" rel="stylesheet" />
-
-<script src="js/vendor/jquery.min.js"></script>
-<script src="js/vendor/bootstrap.min.js"></script>
-<script src="js/vendor/datatables.min.js"></script>
-<!-- script src="js/jquery.dataTables.min.js"></script -->
-<script src="js/vendor/dataTables.bootstrap.min.js"></script>
-<script src="js/script.js"></script>
 
 <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
 <!--[if lt IE 9]>
@@ -36,7 +29,7 @@
 			</div>
 			<ul class="nav navbar-nav">
 				<li><a href="index.html">Sources</a></li>
-				<li><a href="counters.html">PollCounters</a></li>
+				<li><a href="charging.html">Charging Interfaces</a></li>
 			</ul>
 			<ul class="nav navbar-nav navbar-right">
 				<li><a href="cluster.html">Node status: <strong
@@ -47,11 +40,18 @@
 	<!-- page content -->
 	<div class="container">
 		<div class="row">
-			<h4>
+			<div class="col-sm-12">
+				<div class="alert alert-danger fade in" id="action-error"
+					style="display: none;"></div>
+				<div class="alert alert-success fade in" id="action-success"
+					style="display: none;"></div>
+			</div>
+		</div>
+		<div class="row">
+			<h3>
 				<span class="glyphicon glyphicon-list" aria-hidden="true"></span> <span
-					id="sysName"></span> [<span id="ipaddr"></span>]
-			</h4>
-			<div class="raw" id="sourceTags"></div>
+					id="ipaddr"></span> <small id="sysName"></small>
+			</h3>
 			<label class="small">Last poll:</label> <span id="updated"
 				class="small"></span>
 			<ul class="nav nav-pills">
@@ -86,14 +86,14 @@
 				<tr>
 					<td></td>
 					<td></td>
-					<td><b>ifDescr</b></td>
-					<td><b>ChargingInfo</b></td>
+					<td>ifDescr</td>
+					<td>Actions</td>
+					<td>ChargingInfo</td>
 					<td>Mbps In</td>
 					<td>Mbps Out</td>
 					<td>bytes In</td>
 					<td>bytes Out</td>
-					<td>Trace</td>
-					<td></td>
+					<td title='set trace for charging interface'>Trace</td>
 				</tr>
 			</thead>
 			<tbody>
@@ -116,7 +116,7 @@
 						Info</h4>
 				</div>
 				<div class="modal-body">
-          <input type="hidden" id="chargeable" >
+					<input type="hidden" id="chargeable">
 					<div class="form-group">
 						<label for="ifDescr">ifDescr:</label> <input readonly="readonly"
 							class="form-control" type="text" id="ifDescr">
@@ -131,10 +131,10 @@
 
 					<label>Port Type:</label>
 					<div class="form-group">
-						<label class="radio-inline" title="Egress"><input
-							type="radio" name="porttype" value="0">Customer</label> <label
-							class="radio-inline" title="Ingress"><input type="radio"
-							name="porttype" value="1">Downlink</label>
+						<label class="radio-inline" title="outgoing port to CPE"><input
+							type="radio" name="porttype" value="0">PE Downlink</label> <label
+							class="radio-inline" title="incoming port on CPE"><input
+							type="radio" name="porttype" value="1">CPE Uplink</label>
 					</div>
 				</div>
 				<div class="modal-footer">
@@ -145,10 +145,38 @@
 			</div>
 		</div>
 	</div>
-
+	<script src="js/vendor/jquery.min.js"></script>
+	<script src="js/vendor/bootstrap.min.js"></script>
+	<script src="js/vendor/datatables.min.js"></script>
+	<!-- script src="js/jquery.dataTables.min.js"></script -->
+	<script src="js/vendor/dataTables.bootstrap.min.js"></script>
+	<script src="js/script.js"></script>
 	<script>
-		var ip = getUrlParameter("ip");
-		$("#ipaddr").text(ip);
+		function addIfField(name) {
+			var field = "<div class='input-group'><label>"
+					+ name
+					+ ":</label><input id='"
+	      + name
+	      + "' name='"
+	      + name
+	      + "' type='text' class='form-control' placeholder='field-value'></div>";
+
+			$('#portCustomFields').append(field);
+		}
+
+		var tagkeys = [];
+
+		function getPortConfig() {
+			$.ajax({
+				url : "/api/v1/sources/config",
+				success : function(conf) {
+					conf.interfaceTagKeys.forEach(function(key) {
+						addIfField(key);
+						tagkeys.push(key);
+					});
+				}
+			});
+		}
 
 		function getSourceInfo() {
 			$.ajax({
@@ -156,25 +184,23 @@
 				success : function(source) {
 					$("#updated").text(
 							new Date(source.pollTime).toLocaleString());
-					$("#sysName").text(source.sysName);
+					$("#sysName").text("(" + source.sysName + ")");
 					$("#ifNumberCount").text(source.ifNumber);
 					$("#sysUptime").text(uptime(source.sysUptime));
 					$("#statusUpCount").text(source.statusUpCounter);
 					$("#statusDownCount").text(source.statusDownCounter);
 					$("#chargeableCount").text(source.chargeableCounter);
 					$("#traceCount").text(source.traceCounter);
-					var sTags = "";
-					Object.keys(source.tags).forEach(
-							function(item) {
-								sTags += "<label>" + item + ": </label>";
-								sTags += "<span>" + source.tags[item]
-										+ "</span>&nbsp;";
-								$('')
-							});
-					$('#sourceTags').html(sTags);
 				}
 			});
 		}
+
+		var ip = getUrlParameter("ip");
+		$("#ipaddr").text(ip);
+
+		getSourceInfo();
+		clusterInfo();
+		getPortConfig();
 
 		var dt = $('#ifTable')
 				.DataTable(
@@ -185,48 +211,41 @@
 								dataSrc : function(ifTable) {
 									ifTable
 											.forEach(function(ifEntry) {
+
 												ifEntry.chargeInfo = "";
-												ifEntry.actionCharge = "";
+												ifEntry.actionTrace = "";
+												ifEntry.action = "<div class='btn-group btn-group-xs'>";
+
 												if (ifEntry.chargeable) {
-													Object
-															.keys(ifEntry.tags)
-															.forEach(
-																	function(
-																			item) {
-																		ifEntry.chargeInfo += "<span title='"+item+"'>";
-																		ifEntry.chargeInfo += ifEntry.tags[item]
-																				+ "</span>&nbsp;";
-																	});
-													ifEntry.actionCharge = "<a href='#' id='editChargingInfo' title='Edit ChargingInfo'><span class=\"glyphicon glyphicon-edit\" aria-hidden=\"true\"></span></a>";
-													ifEntry.actionCharge += "&nbsp;&nbsp;<a href='#' class='text-danger' id='delChargingInfo' title='Do not charge interface'><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span></a>";
+													ifEntry.chargeInfo += showTagsInfo(ifEntry.tags);
+													ifEntry.action += "<a href='#' id='editChargingInfo' class=\"btn btn-info\" title='Edit ChargingInfo'>";
+													ifEntry.action += "<span class=\"glyphicon glyphicon-pencil\"></span></a>&nbsp;";
+													ifEntry.action += "<a title=\"charge off\" class=\"btn btn-warning\" id=\"delChargingInfo\">";
+													ifEntry.action += "<span class=\"glyphicon glyphicon-remove\"></span></a>";
+
+													if (ifEntry.trace) {
+														ifEntry.actionTrace += "<a title=\"click to trace off\" onclick=\"updateIfTrace('"
+																+ ifEntry.ifDescr
+																+ "',false)\">";
+														ifEntry.actionTrace += "<span class=\"glyphicon glyphicon-check\" aria-hidden=\"true\"></span></a>";
+													} else {
+														ifEntry.actionTrace += "<a title=\"click to trace\" onclick=\"updateIfTrace('"
+																+ ifEntry.ifDescr
+																+ "',true)\">";
+														ifEntry.actionTrace += "<span class=\"glyphicon glyphicon-unchecked\" aria-hidden=\"true\"></span></a>";
+													}
 												} else {
 													// ask for charge
-													ifEntry.chargeInfo = "<a title=\"click to charge\" class=\"label label-default\" id=\"addChargeInfo\">";
-													ifEntry.chargeInfo += "<span class=\"glyphicon glyphicon-plus\" aria-hidden=\"true\"></span> charge</a>";
+													ifEntry.action += "<a title=\"add to charge\" class=\"btn btn-default\" id=\"addChargeInfo\">";
+													ifEntry.action += "<span class=\"glyphicon glyphicon-stats\" aria-hidden=\"true\"></span></a>";
 												}
+												ifEntry.action += "</div>";
 
-												if (ifEntry.trace) {
-													ifEntry.actionTrace = "<a title=\"click to untrace\" class=\"label label-info\" onclick=\"updateIftrace('"
-															+ ifEntry.ifDescr
-															+ "',"
-															+ (!ifEntry.trace)
-															+ ")\">";
-													ifEntry.actionTrace += "<span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span> trace</a>";
-												} else {
-													ifEntry.actionTrace = "<a title=\"click to trace\" class=\"label label-default\" onclick=\"updateIftrace('"
-															+ ifEntry.ifDescr
-															+ "',"
-															+ (!ifEntry.trace)
-															+ ")\">";
-													ifEntry.actionTrace += "<span class=\"glyphicon glyphicon-plus\" aria-hidden=\"true\"></span> trace</a>";
-												}
-												ifEntry.status = (ifEntry.up) ? "<label class=\"label label-info\">up</label> "
-														: "<label class=\"label label-warning\">down</label> ";
+												ifEntry.status = (ifEntry.up) ? "<lable class='label label-success'><span class=\"glyphicon glyphicon-ok-sign\"></span> Up</label>"
+														: "<label class='label label-warning'><span class='glyphicon glyphicon-exclamation-sign' title='down'></span> Down</label>";
+
 												ifEntry.circuit = ifEntry.ifDescr
-														+ ((ifEntry.ifAlias) ? "<br><small>("
-																+ ifEntry.ifAlias
-																+ ")</small>"
-																: "");
+												//+ ((ifEntry.ifAlias) ? "<br><small>("+ ifEntry.ifAlias+ ")</small>": "");
 												ifEntry.rate_in = bandwidth(
 														ifEntry.pollInOctets,
 														30000);
@@ -247,11 +266,17 @@
 										"class" : "detail",
 										"orderable" : false,
 										"data" : null,
-										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-right\" aria-hidden=\"true\"></span>"
+										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-down\" aria-hidden=\"true\"></span>"
 									}, {
-										data : "status"
+										data : "status",
+										"orderable" : false,
+										"searchable" : false
 									}, {
-										data : "circuit"
+										data : "ifDescr"
+									}, {
+										data : "action",
+										"orderable" : false,
+										"searchable" : false
 									}, {
 										data : "chargeInfo"
 									}, {
@@ -272,12 +297,8 @@
 										data : "actionTrace",
 										"orderable" : false,
 										"searchable" : false
-									}, {
-										data : "actionCharge",
-										"orderable" : false,
-										"searchable" : false
 									} ],
-							"order" : [ [ 4, 'desc' ] ]
+							"order" : [ [ 2, 'asc' ] ]
 						});
 
 		function ifstatus(s) {
@@ -285,16 +306,20 @@
 		}
 
 		function format(d) {
-			var ret = "<ul class=\"list-group\">"
-					+ "<li class=\"list-group-item\"><label>SnmpInterface:</label><br><span>"
-					+ " ifIndex: "+d.ifIndex
-					+ " ifAdminStatus: "+d.ifAdminStatus
-					+ " ifOperStatus: " + d.ifOperStatus
-					+ " ifInOctets: " + d.ifInOctets.value + " ["
-					+ d.ifInOctets.type + "]" + " ifOutOctets: "
-					+ d.ifOutOctets.value + " [" + d.ifOutOctets.type
-					+ "]</span></li>";
-			ret += "</ul>";
+			var ret = "<ul class=\"list-group\">";
+			ret += "<li class=\"list-group-item\">";
+			ret += " <label>ifIndex:&nbsp;</label>" + d.ifIndex;
+			ret += " <label>ifAlias:</label> " + d.ifAlias + "</li>";
+			ret += "<li class=\"list-group-item\">";
+			ret += " <label>ifAdminStatus:&nbsp;</label>" + d.ifAdminStatus;
+			ret += " <label>ifOperStatus:&nbsp;</label>" + d.ifOperStatus;
+			ret += " <label>ifInOctets:&nbsp;</label><span>"
+					+ d.ifInOctets.value
+			ret += " [" + d.ifInOctets.type + "]";
+			ret += " <label>ifOutOctets:&nbsp;</label><span>"
+					+ d.ifOutOctets.value
+			ret += " [" + d.ifOutOctets.type + "]";
+			ret += "</li></ul>";
 			return ret;
 		}
 
@@ -303,16 +328,19 @@
 
 		$('#ifTable tbody').on('click', 'tr td.detail', function() {
 			var tr = $(this).closest('tr');
-			//var btn = $(this).children();
+			// var btn = $(this).children();
 			var row = dt.row(tr);
 			var idx = $.inArray(tr.attr('id'), detailRows);
 			if (row.child.isShown()) {
 				row.child.hide();
 				// Remove from the 'open' array
 				detailRows.splice(idx, 1);
+				$(this).find('span').removeClass('glyphicon-chevron-up');
+				$(this).find('span').addClass('glyphicon-chevron-down');
 			} else {
 				row.child(format(row.data())).show();
-
+				$(this).find('span').removeClass('glyphicon-chevron-down');
+				$(this).find('span').addClass('glyphicon-chevron-up');
 				// Add to the 'open' array
 				if (idx === -1) {
 					detailRows.push(tr.attr('id'));
@@ -386,7 +414,7 @@
 		function updateChargingInfo() {
 
 			var jsonData = "{\"ifDescr\":\"" + $('#ifDescr').val() + "\"";
-			jsonData += ",\"chargeable\":"+$("#chargeable").val();
+			jsonData += ",\"chargeable\":" + $("#chargeable").val();
 			jsonData += ",\"portType\":"
 					+ $('input[name=porttype]:checked').val();
 			jsonData += ",\"tags\":{";
@@ -408,7 +436,7 @@
 				success : function(result) {
 					dt.ajax.reload();
 					getSourceInfo();
-					bootstrap_alert.warning(result.Status, 'success', 3000);
+					bootstrap_alert.info(result.Status, 2000);
 				}
 			});
 		}
@@ -498,7 +526,7 @@
 			updateIfchargeable(batchIF, false);
 		});
 
-		function updateIftrace(ifdescr, action) {
+		function updateIfTrace(ifdescr, action) {
 			var jsonData = JSON.stringify({
 				"ifDescr" : ifdescr,
 				"trace" : action
@@ -512,7 +540,7 @@
 				success : function(result) {
 					dt.ajax.reload();
 					getSourceInfo();
-					bootstrap_alert.warning(result.Status, 'success', 3000);
+					bootstrap_alert.info(result.Status, 2000);
 				}
 			});
 		}
@@ -530,36 +558,10 @@
 				success : function(result) {
 					dt.ajax.reload();
 					getSourceInfo();
-					bootstrap_alert.warning(result.Status, 'success', 3000);
+					bootstrap_alert.info(result.Status, 2000);
 				}
 			});
 		}
-
-		function addIfField(name) {
-			var field = "<div class='input-group'><label>"
-					+ name
-					+ ":</label><input id='"+name+"' name='"+name+"' type='text' class='form-control' placeholder='field-value'></div>";
-
-			$('#portCustomFields').append(field);
-		}
-
-		var tagkeys = [];
-
-		function getPortConfig() {
-			$.ajax({
-				url : "/api/v1/sources/config",
-				success : function(conf) {
-					conf.interfaceTagKeys.forEach(function(key) {
-						addIfField(key);
-						tagkeys.push(key);
-					});
-				}
-			});
-		}
-
-		getSourceInfo();
-		clusterInfo();
-		getPortConfig();
 	</script>
 </body>
 </html>

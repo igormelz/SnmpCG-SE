@@ -8,19 +8,14 @@
 <meta name="author" content="OpenFS">
 <link rel='shortcut icon' href='img/favicon.ico' type='image/x-icon' />
 
-<title>SnmpCG - Admin Interface</title>
+<title>SnmpCG Admin: Source Inventory</title>
 
 <!-- Bootstrap Core CSS -->
 <link href="css/vendor/bootstrap.min.css" rel="stylesheet" />
 <link href="css/dataTables.bootstrap.min.css" rel="stylesheet" />
 <link href="css/style.css" rel="stylesheet" />
 
-<script src="js/vendor/jquery.min.js"></script>
-<script src="js/vendor/bootstrap.min.js"></script>
-<script src="js/vendor/datatables.min.js"></script>
-<script src="js/vendor/jquery.dataTables.min.js"></script>
-<script src="js/vendor/dataTables.bootstrap.min.js"></script>
-<script src="js/script.js"></script>
+
 <!-- HTML5 shim, for IE6-8 support of HTML5 elements. All other JS at the end of file. -->
 <!--[if lt IE 9]>
       <script src="js/vendor/html5shiv.js"></script>
@@ -38,7 +33,7 @@
 			<!-- nav links -->
 			<ul class="nav navbar-nav">
 				<li class="active"><a href="index.html">Sources</a></li>
-				<li><a href="counters.html">PollCounters</a></li>
+				<li><a href="charging.html">Charging Interfaces</a></li>
 			</ul>
 			<ul class="nav navbar-nav navbar-right">
 				<li><a href="cluster.html">Node status: <strong
@@ -51,15 +46,31 @@
 	<!-- page content -->
 	<div class="container">
 		<div class="row">
+			<div class="col-sm-12">
+				<div class="alert alert-danger fade in" id="action-error"
+					style="display: none;"></div>
+				<div class="alert alert-success fade in" id="action-success"
+					style="display: none;"></div>
+			</div>
+		</div>
+		<div class="row">
 			<ul class="nav nav-pills">
+				<!-- 
 				<li><a href="#" class="text-default" data-toggle="modal"
 					title="add source" id="addNewBtn" data-target="#addNewSource"><span
-						class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add</a></li>
+						class="glyphicon glyphicon-plus" aria-hidden="true"></span> New</a></li>
+						-->
+				<li><a href="#" class="text-default" title="add source"
+					id="addNewBtn" onclick="addNewSource()"> <span
+						class="glyphicon glyphicon-plus" aria-hidden="true"></span> New
+				</a></li>
 				<li><a href="#" title="view all sources" id="filter_all"
-					class="text-info"> No Filter <span id="allVal" class="badge"></span>
+					class="text-info"> <span class="glyphicon glyphicon-filter"
+						aria-hidden="true"></span> No Filter <span id="allVal"
+						class="badge"></span>
 				</a></li>
 				<li><a href="#" title="view up sources" id="filter_success"
-					class="text-primary"> <span class="glyphicon glyphicon-filter"
+					class="text-success"> <span class="glyphicon glyphicon-filter"
 						aria-hidden="true"></span> Success <span id="successVal"
 						class="badge"></span>
 				</a></li>
@@ -76,17 +87,17 @@
 			</ul>
 		</div>
 
-		<table id="ifTable" class="table table-condensed">
+		<table id="srcTable" class="table table-condensed">
 			<thead>
 				<tr>
 					<td></td>
-					<td>Source</td>
-					<td>SourceInfo</td>
+					<td>Source IP</td>
+					<td>Actions</td>
+					<td>Info</td>
 					<td>last poll</td>
 					<td>status</td>
 					<td>response (ms)</td>
 					<td>Charge/Trace</td>
-					<td></td>
 				</tr>
 			</thead>
 			<tbody>
@@ -94,6 +105,8 @@
 		</table>
 	</div>
 	<!-- /.container -->
+
+
 
 	<!-- Modal -->
 	<div class="modal fade" id="addNewSource" tabindex="-1" role="dialog"
@@ -116,9 +129,6 @@
 							<input id="new_source" type="text" class="form-control"
 								required="required" placeholder="0.0.0.0">
 						</div>
-						<label>Custom fields</label><em> (<span style="color: red">*</span>required)
-						</em>
-						<div class="form-group" id="customFields"></div>
 						<label for="community">SNMP parameters</label>
 						<div class="form-group">
 							<input disabled id="community" type="text" class="form-control"
@@ -134,12 +144,14 @@
 								id="useSystemCommunity" type="checkbox" checked /> use system
 								default</label>
 						</div>
+						<div id="customFields"></div>
 					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-						<button class="btn btn-primary" type="submit" data-dismiss="modal"
-							onclick="addSource()">Add source</button>
-					</div>
+				</form>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					<button class="btn btn-primary" type="submit" data-dismiss="modal"
+						onclick="addSource()">Add source</button>
+				</div>
 				</form>
 			</div>
 		</div>
@@ -171,7 +183,7 @@
 	</div>
 
 	<!-- edit -->
-	<div class="modal fade" id="editSource" tabindex="-1" role="dialog"
+	<div class="modal fade" id="editSourceSettings" tabindex="-1" role="dialog"
 		aria-labelledby="myModalLabel">
 		<div class="modal-dialog modal-sm" role="document">
 			<div class="modal-content">
@@ -180,31 +192,31 @@
 						aria-label="Close">
 						<span aria-hidden="true">&times;</span>
 					</button>
-					<h4 class="modal-title" id="myModalLabel1">Change Source
-						Settings</h4>
+					<h4 class="modal-title" id="myModalLabel1">Source Settings</h4>
 				</div>
-				<div class="modal-body">
-					<label>Source ipAddress:</label>
-					<div class="form-group">
-						<input readonly="readonly" class="form-control" type="text"
-							id="sourceIpAddress">
+				<form id="updateSourceForm">
+					<div class="modal-body">
+						<label>Source ipAddress:</label>
+						<div class="form-group">
+							<input readonly="readonly" class="form-control" type="text"
+								id="sourceIpAddress">
+						</div>
+						<label for="community">SNMP parameters</label>
+						<div class="form-group">
+							<input id="sourceCommunity" type="text" class="form-control"
+								placeholder="community-string" />
+						</div>
+						<div class="form-group">
+							<input id="sourceRetries" type="text" class="form-control"
+								placeholder="num retries" />
+						</div>
+						<div class="form-group">
+							<input id="sourceTimeout" type="text" class="form-control"
+								placeholder="timeout in sec">
+						</div>
+						<div id="sourceCustomFields"></div>
 					</div>
-					<label>Custom fields</label>
-					<div class="form-group" id="sourceCustomFields"></div>
-					<label for="community">SNMP parameters</label>
-					<div class="form-group">
-						<input id="sourceCommunity" type="text" class="form-control"
-							placeholder="community-string" />
-					</div>
-					<div class="form-group">
-						<input id="sourceRetries" type="text" class="form-control"
-							placeholder="num retries" />
-					</div>
-					<div class="form-group">
-						<input id="sourceTimeout" type="text" class="form-control"
-							placeholder="timeout in sec">
-					</div>
-				</div>
+				</form>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 					<button class="btn btn-primary" type="submit" data-dismiss="modal"
@@ -214,36 +226,32 @@
 		</div>
 	</div>
 
+	<script src="js/vendor/jquery.min.js"></script>
+	<script src="js/vendor/bootstrap.min.js"></script>
+	<script src="js/vendor/datatables.min.js"></script>
+	<script src="js/vendor/jquery.dataTables.min.js"></script>
+	<script src="js/vendor/dataTables.bootstrap.min.js"></script>
+	<script src="js/script.js"></script>
 	<script>
-		// onLoad
-		fillCounter();
-		getConfig();
-		clusterInfo();
-
 		var tagkeys = [];
-		function addField(name) {
-			var field = "<div class='input-group'><span class='input-group-addon'>"
-					+ name
-					+ "</span>"
-					+ "<input id='"+name+"' name='"+name+"' type='text' class='form-control' placeholder='field-value'></div>";
+		var configProp = null;
 
+		//$("div#action-success").empty().hide();
+		//$("div#action-error").empty().hide();
+
+		function addField(name) {
+			var field = "<div class='form-group'><label>"
+					+ name
+					+ ":</label><input id='"
+      + name
+      + "' name='"
+      + name
+      + "' type='text' class='form-control' placeholder='field-value'></div>";
+			tagkeys.push(name);
 			$('#customFields').append(field);
 			$('#sourceCustomFields').append(field);
-			tagkeys.push(name);
 			console.log("add field " + name);
 		}
-
-		$('#useSystemCommunity').on('click', function() {
-			if (this.checked) {
-				$('#community').prop('disabled', true);
-				$('#retries').prop('disabled', true);
-				$('#timeout').prop('disabled', true);
-			} else {
-				$('#community').prop('disabled', false);
-				$('#retries').prop('disabled', false);
-				$('#timeout').prop('disabled', false);
-			}
-		});
 
 		function updateSource() {
 			var source = $('#sourceIpAddress').val();
@@ -263,9 +271,12 @@
 			}
 			jsonData += ",\"tags\":{";
 			tagkeys.forEach(function(item, idx, arr) {
-				jsonData += "\"" + item + "\":\""
-						+ addslashes($("#sourceCustomFields #" + item).val())
-						+ "\"";
+				jsonData += "\""
+						+ item
+						+ "\":\""
+						+ addslashes($(
+								"#updateSourceForm input[id='" + item + "']")
+								.val()) + "\"";
 				if (idx != tagkeys.length - 1) {
 					jsonData += ",";
 				}
@@ -278,13 +289,12 @@
 				contentType : "application/json",
 				data : jsonData,
 				success : function() {
-					bootstrap_alert.warning('Source add to poll', 'success',
-							3000);
+					bootstrap_alert.info('Source updated', 2000);
 					fillCounter();
 					dt.ajax.url('/api/v1/sources').load();
 				},
 				error : function(xhr) {
-					bootstrap_alert.warning(xhr.statusText, 'error', 3000);
+					bootstrap_alert.error(xhr.statusText, 3000);
 				}
 			});
 		}
@@ -295,10 +305,10 @@
 			var retries = $('#retries').val();
 			var timeout = $('#timeout').val();
 
-			//console.log(tags);
+			// console.log(tags);
 
 			if (validateIPaddress(source)) {
-				//var jsonData = JSON.stringify({"ipaddr":source, "community":action});
+				// var jsonData = JSON.stringify({"ipaddr":source, "community":action});
 				var jsonData = "{\"ipaddr\":\"" + source + "\"";
 				if (community != null && community != '') {
 					jsonData += ",\"community\":\"" + community + "\"";
@@ -311,9 +321,12 @@
 				}
 				jsonData += ",\"tags\":{";
 				tagkeys.forEach(function(item, idx, arr) {
-					jsonData += "\"" + item + "\":\""
-							+ addslashes($("input[id='" + item + "']").val())
-							+ "\"";
+					jsonData += "\""
+							+ item
+							+ "\":\""
+							+ addslashes($(
+									"#newSourceForm input[id='" + item + "']")
+									.val()) + "\"";
 					if (idx != tagkeys.length - 1) {
 						jsonData += ",";
 					}
@@ -322,20 +335,18 @@
 
 				console.log("add source: " + jsonData);
 				$.ajax({
-					url : "/api/v1/sources", //+source+queryStr,
+					url : "/api/v1/sources", // +source+queryStr,
 					type : 'POST',
 					contentType : "application/json",
 					data : jsonData,
 					success : function() {
-						bootstrap_alert.warning('Source add to poll',
-								'success', 3000);
+						bootstrap_alert.info('Source add to poll', 3000);
 						fillCounter();
 						dt.ajax.url('/api/v1/sources').load();
 					}
 				});
 			} else {
-				bootstrap_alert.warning('Wrong IP format: ' + source,
-						'warning', 3000);
+				bootstrap_alert.error('Wrong IP format: ' + source, 3000);
 			}
 		}
 
@@ -346,8 +357,7 @@
 					url : "/api/v1/sources/" + source,
 					type : "DELETE",
 					success : function() {
-						bootstrap_alert.warning('Source deleted', 'success',
-								3000);
+						bootstrap_alert.info('Source deleted', 2000);
 						fillCounter();
 						dt.ajax.url('/api/v1/sources').load();
 					}
@@ -362,9 +372,10 @@
 					conf.sourceTagKeys.forEach(function(key) {
 						addField(key);
 					});
-					$('#community').val(conf.snmpCommunity);
-					$('#retries').val(conf.snmpRetries);
-					$('#timeout').val(conf.snmpTimeout);
+					configProp = conf;
+					//$('#community').val(conf.snmpCommunity);
+					//$('#retries').val(conf.snmpRetries);
+					//$('#timeout').val(conf.snmpTimeout);
 				}
 			});
 		}
@@ -392,7 +403,23 @@
 					});
 		}
 
-		var dt = $('#ifTable')
+		function format(source) {
+			var answer = "<ul class=\"list-group small\">";
+			answer += "<li class=\"list-group-item\"><label>sysDescr:</label> ";
+			answer += source.sysDescr + "</li>";
+			answer += "<li class=\"list-group-item\"><label>sysUpTime:</label> ";
+			answer += uptime(source.sysUptime);
+			answer += "&nbsp;<label>ifNumber:</label> ";
+			answer += source.ifNumber + " (" + source.statusUpCounter
+					+ " is up)</li>";
+			answer += "</ul>";
+			return answer;
+		}
+
+		// Array to track the ids of the details displayed rows
+		var detailRows = [];
+
+		var dt = $('#srcTable')
 				.DataTable(
 						{
 							ajax : {
@@ -400,60 +427,43 @@
 								dataSrc : function(sources) {
 									sources
 											.forEach(function(source) {
-												source.viewSrc = "<a title=\"click to view interfaces\" href=\"view.html?ip=";
-												source.viewSrc += source.Ip;
-												source.viewSrc += "\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a>";
 
-												source.actionSrc = "<a href='#' id='editSrc' title='Change settings'><span class=\"glyphicon glyphicon-edit\" aria-hidden=\"true\"></span></a>";
-												source.actionSrc += "&nbsp;&nbsp;<a href='#' class='text-danger' id='delSrc' title='Remove source'><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span></a>";
-												switch (source.Status) {
-												case 'SUCCESS':
-													source.Status = "<span class=\"label label-success small\">"
-															+ source.Status
-															+ "</span>";
-													break;
-												case 'TIMEOUT':
-													source.Status = "<span class=\"label label-danger small\">"
-															+ source.Status
-															+ "</span>";
-													break;
-												case 'NO_PDU':
-													source.Status = "<span class=\"label label-warning small\">"
-															+ source.Status
-															+ "</span>";
-													break;
-												case 'NO IFTABLE':
-													source.Status = "<span class=\"label label-warning small\">"
-															+ source.Status
-															+ "</span>";
-													break;
-												case 'UNKNOWN':
-													source.Status = "<span class=\"label label-default small\">"
-															+ source.Status
-															+ "</span> ";
+												source.actionGroup = "<div class='btn-group btn-group-xs'>";
+												source.actionGroup += "<a href='#' id='editSrc' title='Change settings' class='btn btn-info'><span class=\"glyphicon glyphicon-pencil\" aria-hidden=\"true\"></span></a>";
+												source.actionGroup += "<a href='#' class='btn btn-danger' id='delSrc' title='Remove source'><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span></a>";
+												source.actionGroup += "</div>";
+
+												if (source.Status == 'SUCCESS') {
+													source.Status = "<span class=\"glyphicon glyphicon-ok-sign text-success\" aria-hidden=\"true\" title='Success'></span>";
+												} else if (source.Status == 'UNKNOWN') {
+													source.Status = "<span class=\"glyphicon glyphicon-question-sign text-primary\" aria-hidden=\"true\" title='Unknown'></span>";
+												} else {
+													source.Status = "<span class=\"glyphicon glyphicon-warning-sign text-danger\" title='"
+                      + source.Status
+                      + "'></span>";
 												}
-												source.SourceInfo = source.viewSrc
-														+ "&nbsp;";
-												source.SourceInfo += (source.sysName) ? source.sysName
-														+ " ["
-														+ source.Ip
-														+ "]"
-														: source.Ip;
-												source.sourceTags = "";
-												Object
-														.keys(source.tags)
-														.forEach(
-																function(item) {
-																	source.sourceTags += "<span title='"+item+"'>";
-																	source.sourceTags += source.tags[item]
-																			+ "</span>&nbsp;";
-																});
+
+												source.SourceInfo = "<a title=\"click to view interfaces\" href=\"view.html?ip="
+                            + source.ipAddress
+                            + "\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a>&nbsp;";
+												source.SourceInfo += source.ipAddress
+														+ ((source.sysName) ? "<br><small>("
+																+ source.sysName
+																+ ")</small>"
+																: "");
+
+												source.sourceTags = showTagsInfo(source.tags);
+
 												source.counters = source.chargeableCounter
 														+ "/"
 														+ source.traceCounter;
-												source.pollTime = new Date(
-														source.pollTime)
-														.toLocaleString();
+												if (source.pollTime == 0) {
+													source.pollTime = "none";
+												} else {
+													source.pollTime = new Date(
+															source.pollTime)
+															.toLocaleString();
+												}
 											});
 									return sources;
 								}
@@ -465,9 +475,12 @@
 										"class" : "detail",
 										"orderable" : false,
 										"data" : null,
-										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-right\" aria-hidden=\"true\"></span>"
+										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-down\" aria-hidden=\"true\"></span>"
 									}, {
 										data : "SourceInfo"
+					                  }, {
+					                      "orderable" : false,
+					                      "data" : "actionGroup"
 									}, {
 										data : "sourceTags"
 									}, {
@@ -478,32 +491,56 @@
 										data : "pollResponse"
 									}, {
 										data : "counters"
-
-									}, {
-										"orderable" : false,
-										"data" : "actionSrc"
 									} ],
 							"order" : [ [ 1, 'asc' ] ]
 						});
 
-		function format(source) {
-			var answer = "<ul class=\"list-group small\">";
-			answer += "<li class=\"list-group-item\"><label>sysDescr:</label> ";
-			answer += source.sysDescr + "</li>";
-			answer += "<li class=\"list-group-item\"><label>sysUpTime:</label> ";
-			answer += uptime(source.sysUptime) + "</li>";
-			answer += "<li class=\"list-group-item\"><label>ifNumber:</label> ";
-			answer += source.ifNumber + " [up:" + source.statusUpCounter
-					+ "]</li>";
-			answer += "</ul>";
-			return answer;
+		fillCounter();
+		getConfig();
+		clusterInfo();
+
+		$('#useSystemCommunity').on('click', function() {
+			  enableDefaultValue(this.checked);
+		});
+
+		$('#srcTable tbody').on('click', 'tr td.detail', function() {
+			var tr = $(this).closest('tr');
+			var row = dt.row(tr);
+			var idx = $.inArray(tr.attr('id'), detailRows);
+			if (row.child.isShown()) {
+				row.child.hide();
+				// Remove from the 'open' array
+				detailRows.splice(idx, 1);
+				$(this).find('span').removeClass('glyphicon-chevron-up');
+				$(this).find('span').addClass('glyphicon-chevron-down');
+			} else {
+				row.child(format(row.data())).show();
+				$(this).find('span').removeClass('glyphicon-chevron-down');
+				$(this).find('span').addClass('glyphicon-chevron-up');
+				// Add to the 'open' array
+				if (idx === -1) {
+					detailRows.push(tr.attr('id'));
+				}
+			}
+		});
+
+		function addNewSource() {
+			$("#new_source").val('');
+			$('#community').val(configProp.snmpCommunity);
+			$('#retries').val(configProp.snmpRetries);
+			$('#timeout').val(configProp.snmpTimeout);
+			tagkeys.forEach(function(item) {
+				$("#customFields input[name='" + item + "']").val("");
+			});
+			jQuery.noConflict();
+			$("#addNewSource").modal();
 		}
 
-		$('#ifTable tbody').on(
+		$('#srcTable tbody').on(
 				'click',
 				'tr #delSrc',
 				function() {
-					var ip = dt.row($(this).closest('tr')).data().Ip;
+					var ip = dt.row($(this).closest('tr')).data().ipAddress;
 					console.log("try to remove:" + ip);
 					jQuery.noConflict();
 					$("#askToRemove").find('.modal-title').text(
@@ -512,58 +549,38 @@
 					$("#askToRemove").modal();
 				});
 
-		$('#ifTable tbody').on('click', 'tr #editSrc', function() {
-			var data = dt.row($(this).closest('tr')).data();
-			jQuery.noConflict();
-			$("#sourceIpAddress").val(data.Ip);
-			$("#sourceCommunity").val(data.snmpCommunity);
-			$('#sourceRetries').val(data.snmpRetries);
-			$('#sourceTimeout').val(data.snmpTimeout);
-			tagkeys.forEach(function(item) {
-				$("#sourceCustomFields #" + item).val(data.tags[item]);
-			});
-			$("#editSource").modal();
-		});
-
-		// Array to track the ids of the details displayed rows
-		var detailRows = [];
-
-		$('#ifTable tbody').on('click', 'tr td.detail', function() {
-			var tr = $(this).closest('tr');
-			var row = dt.row(tr);
-			var idx = $.inArray(tr.attr('id'), detailRows);
-			if (row.child.isShown()) {
-				row.child.hide();
-				// Remove from the 'open' array
-				detailRows.splice(idx, 1);
-			} else {
-				row.child(format(row.data())).show();
-				// Add to the 'open' array
-				if (idx === -1) {
-					detailRows.push(tr.attr('id'));
-				}
-			}
-		});
+		$('#srcTable tbody').on(
+				'click',
+				'tr #editSrc',
+				function() {
+					var data = dt.row($(this).closest('tr')).data();
+					jQuery.noConflict();
+					$("#sourceIpAddress").val(data.ipAddress);
+					$("#sourceCommunity").val(data.snmpCommunity);
+					$('#sourceRetries').val(data.snmpRetries);
+					$('#sourceTimeout').val(data.snmpTimeout);
+					tagkeys.forEach(function(item) {
+						$("#sourceCustomFields input[name='" + item + "']")
+								.val(data.tags[item]);
+					});
+					$("#editSourceSettings").modal();
+				});
 
 		$('#filter_all').on('click', function() {
 			fillCounter();
 			dt.ajax.url('/api/v1/sources').load();
-			//dt.column(3).visible(true);
 		});
 		$('#filter_success').on('click', function() {
 			fillCounter();
 			dt.ajax.url('/api/v1/sources?status=SUCCESS').load();
-			//dt.column(3).visible(false);
 		});
 		$('#filter_timeout').on('click', function() {
 			fillCounter();
 			dt.ajax.url('/api/v1/sources?status=TIMEOUT').load();
-			//dt.column(3).visible(false);
 		});
 		$('#filter_unknown').on('click', function() {
 			fillCounter();
 			dt.ajax.url('/api/v1/sources?status=UNKNOWN').load();
-			//dt.column(3).visible(false);
 		});
 	</script>
 </body>
