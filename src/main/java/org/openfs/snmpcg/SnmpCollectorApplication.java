@@ -98,15 +98,18 @@ public class SnmpCollectorApplication {
         public void configure() {
 
             // scheduled poll source status
-            from("timer://validate?period={{snmpcg.validateStatusTimer:3m}}").routeId("pollStatus").split(method("snmpSources", "getDownSources"), new NullAggregationStrategy())
-                .parallelProcessing().bean("snmpPoll", "pollStatus").setHeader(HazelcastConstants.OPERATION, constant(HazelcastConstants.PUT_OPERATION))
-                .to("hazelcast:map:sources?hazelcastInstanceName=hzSnmpCG").end();
+            from("timer://validate?period={{snmpcg.validateStatusTimer:3m}}").routeId("pollStatus")
+                .routePolicyRef("clusterPolicy")
+                .split(method("snmpSources", "getDownSources"), new NullAggregationStrategy()).parallelProcessing()
+                    .bean("snmpPoll", "pollStatus")
+                    .setHeader(HazelcastConstants.OPERATION, constant(HazelcastConstants.PUT_OPERATION))
+                    .to("hazelcast:map:sources?hazelcastInstanceName=hzSnmpCG")
+                .end();
 
             // scheduled poll counters
             from("quartz2://snmp/poll?cron=0+0/5+*+*+*+?&pauseJob=true&deleteJob=false").routeId("pollCounters")
                 .routePolicyRef("clusterPolicy")
                 .filter(method("snmpSources", "validateStartPoll"))
-                // .log("started")
                 .split(method("snmpSources", "getReadySources"), new NullAggregationStrategy()).parallelProcessing().executorServiceRef("SnmpCGThreadPoolProfile")
                 .bean("snmpPoll", "pollCounters").setHeader(HazelcastConstants.OPERATION, constant(HazelcastConstants.PUT_OPERATION))
                 .to("hazelcast:map:sources?hazelcastInstanceName=hzSnmpCG").end().log("${bean:snmpSources?method=logEndPoll}").to("direct:storeCdr", "direct:storeTrace").end();
