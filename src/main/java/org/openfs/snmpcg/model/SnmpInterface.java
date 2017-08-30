@@ -21,7 +21,7 @@ public final class SnmpInterface implements Serializable {
     private boolean marked = false;
     private final Map<String, String> tags = new HashMap<String, String>();
     // ingress = 1 ; egress = 0
-    private int portType = SnmpConstants.EGRESS;
+    private int chargeFlow = SnmpConstants.EGRESS;
 
     public SnmpInterface(String ifDescr) {
         this.ifDescr = ifDescr;
@@ -57,8 +57,11 @@ public final class SnmpInterface implements Serializable {
     public void setChargeable(boolean chargeable) {
         this.chargeable = chargeable;
         if (!chargeable) {
-            tags.clear();
-            portType = SnmpConstants.EGRESS;
+            //tags.clear();
+            // clear trace
+            setTrace(false);
+            // reset portType
+            chargeFlow = SnmpConstants.EGRESS;
         }
     }
 
@@ -175,11 +178,12 @@ public final class SnmpInterface implements Serializable {
         tags.clear();
     }
 
-    public int getPortType() {
-        return portType;
+
+    public int getChargeFlow() {
+        return chargeFlow;
     }
 
-    public void setPortType(int portType) {
-        this.portType = portType;
+    public void setChargeFlow(int chargeFlow) {
+        this.chargeFlow = chargeFlow;
     }
 }

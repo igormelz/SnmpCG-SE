@@ -85,15 +85,15 @@
 			<thead>
 				<tr>
 					<td></td>
-					<td></td>
 					<td>ifDescr</td>
-					<td>Actions</td>
-					<td>ChargingInfo</td>
+					<td>Charge</td>
+					<td>Trace</td>
+					<td>Tags</td>
+					<td>Status</td>
 					<td>Mbps In</td>
 					<td>Mbps Out</td>
 					<td>bytes In</td>
 					<td>bytes Out</td>
-					<td title='set trace for charging interface'>Trace</td>
 				</tr>
 			</thead>
 			<tbody>
@@ -116,7 +116,7 @@
 						Info</h4>
 				</div>
 				<div class="modal-body">
-					<input type="hidden" id="chargeable">
+				
 					<div class="form-group">
 						<label for="ifDescr">ifDescr:</label> <input readonly="readonly"
 							class="form-control" type="text" id="ifDescr">
@@ -129,18 +129,20 @@
 
 					<div id="portCustomFields" class="form-group"></div>
 
-					<label>Port Type:</label>
+					<label>ChargeFlow:</label>
 					<div class="form-group">
 						<label class="radio-inline" title="outgoing port to CPE"><input
-							type="radio" name="porttype" value="0">PE Downlink</label> <label
+							type="radio" name="chargeFlow" value="0">PE Downlink</label> <label
 							class="radio-inline" title="incoming port on CPE"><input
-							type="radio" name="porttype" value="1">CPE Uplink</label>
+							type="radio" name="chargeFlow" value="1">CPE Uplink</label>
 					</div>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 					<button class="btn btn-primary" type="submit" data-dismiss="modal"
-						id="submitBtn" onclick="updateChargingInfo()">Add/Update</button>
+						id="submitBtn">Add/Update</button>
+					<button class="btn btn-warning hidden" type="submit" data-dismiss="modal"
+						id="removeBtn">Do not charge</button>
 				</div>
 			</div>
 		</div>
@@ -152,33 +154,9 @@
 	<script src="js/vendor/dataTables.bootstrap.min.js"></script>
 	<script src="js/script.js"></script>
 	<script>
-		function addIfField(name) {
-			var field = "<div class='input-group'><label>"
-					+ name
-					+ ":</label><input id='"
-	      + name
-	      + "' name='"
-	      + name
-	      + "' type='text' class='form-control' placeholder='field-value'></div>";
 
-			$('#portCustomFields').append(field);
-		}
 
-		var tagkeys = [];
-
-		function getPortConfig() {
-			$.ajax({
-				url : "/api/v1/sources/config",
-				success : function(conf) {
-					conf.interfaceTagKeys.forEach(function(key) {
-						addIfField(key);
-						tagkeys.push(key);
-					});
-				}
-			});
-		}
-
-		function getSourceInfo() {
+	var getSourceInfo =	function() {
 			$.ajax({
 				url : "/api/v1/sources/" + ip,
 				success : function(source) {
@@ -212,16 +190,16 @@
 									ifTable
 											.forEach(function(ifEntry) {
 
-												ifEntry.chargeInfo = "";
+												ifEntry.chargeInfo = showTagsInfo(ifEntry.tags);
 												ifEntry.actionTrace = "";
-												ifEntry.action = "<div class='btn-group btn-group-xs'>";
+												ifEntry.action = "";//"<div class='btn-group btn-group-xs'>";
 
 												if (ifEntry.chargeable) {
-													ifEntry.chargeInfo += showTagsInfo(ifEntry.tags);
-													ifEntry.action += "<a href='#' id='editChargingInfo' class=\"btn btn-info\" title='Edit ChargingInfo'>";
-													ifEntry.action += "<span class=\"glyphicon glyphicon-pencil\"></span></a>&nbsp;";
-													ifEntry.action += "<a title=\"charge off\" class=\"btn btn-warning\" id=\"delChargingInfo\">";
-													ifEntry.action += "<span class=\"glyphicon glyphicon-remove\"></span></a>";
+
+													ifEntry.action += "<a href='#' id='editChargingInfo' class=\"btn btn-primary btn-xs\" title='Edit ChargingInfo'>";
+													ifEntry.action += "<span class=\"glyphicon glyphicon-stats\"></span></a>&nbsp;";
+													//ifEntry.action += "<a title=\"charge off\" class=\"btn btn-warning\" id=\"delChargingInfo\">";
+													//ifEntry.action += "<span class=\"glyphicon glyphicon-remove\"></span></a>";
 
 													if (ifEntry.trace) {
 														ifEntry.actionTrace += "<a title=\"click to trace off\" onclick=\"updateIfTrace('"
@@ -236,13 +214,12 @@
 													}
 												} else {
 													// ask for charge
-													ifEntry.action += "<a title=\"add to charge\" class=\"btn btn-default\" id=\"addChargeInfo\">";
+													ifEntry.action += "<a title=\"add to charge\" class=\"btn btn-default btn-xs\" id=\"addChargeInfo\">";
 													ifEntry.action += "<span class=\"glyphicon glyphicon-stats\" aria-hidden=\"true\"></span></a>";
 												}
-												ifEntry.action += "</div>";
+												//ifEntry.action += "</div>";
 
-												ifEntry.status = (ifEntry.up) ? "<lable class='label label-success'><span class=\"glyphicon glyphicon-ok-sign\"></span> Up</label>"
-														: "<label class='label label-warning'><span class='glyphicon glyphicon-exclamation-sign' title='down'></span> Down</label>";
+												ifEntry.status = showInterfaceStatus(ifEntry.up);
 
 												ifEntry.circuit = ifEntry.ifDescr
 												//+ ((ifEntry.ifAlias) ? "<br><small>("+ ifEntry.ifAlias+ ")</small>": "");
@@ -268,17 +245,22 @@
 										"data" : null,
 										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-down\" aria-hidden=\"true\"></span>"
 									}, {
-										data : "status",
-										"orderable" : false,
-										"searchable" : false
-									}, {
+
 										data : "ifDescr"
 									}, {
 										data : "action",
 										"orderable" : false,
 										"searchable" : false
 									}, {
+										data : "actionTrace",
+										"orderable" : false,
+										"searchable" : false
+									}, {
 										data : "chargeInfo"
+									}, {
+										data : "status",
+										"orderable" : false,
+										"searchable" : false
 									}, {
 										data : "rate_in",
 										"searchable" : false
@@ -293,34 +275,12 @@
 										data : "bytes_out",
 										"orderable" : false,
 										"searchable" : false
-									}, {
-										data : "actionTrace",
-										"orderable" : false,
-										"searchable" : false
 									} ],
-							"order" : [ [ 2, 'asc' ] ]
+							"order" : [ [ 1, 'asc' ] ]
 						});
 
 		function ifstatus(s) {
 			return (s == 1) ? "up" : "down";
-		}
-
-		function format(d) {
-			var ret = "<ul class=\"list-group\">";
-			ret += "<li class=\"list-group-item\">";
-			ret += " <label>ifIndex:&nbsp;</label>" + d.ifIndex;
-			ret += " <label>ifAlias:</label> " + d.ifAlias + "</li>";
-			ret += "<li class=\"list-group-item\">";
-			ret += " <label>ifAdminStatus:&nbsp;</label>" + d.ifAdminStatus;
-			ret += " <label>ifOperStatus:&nbsp;</label>" + d.ifOperStatus;
-			ret += " <label>ifInOctets:&nbsp;</label><span>"
-					+ d.ifInOctets.value
-			ret += " [" + d.ifInOctets.type + "]";
-			ret += " <label>ifOutOctets:&nbsp;</label><span>"
-					+ d.ifOutOctets.value
-			ret += " [" + d.ifOutOctets.type + "]";
-			ret += "</li></ul>";
-			return ret;
 		}
 
 		// Array to track the ids of the details displayed rows
@@ -338,7 +298,7 @@
 				$(this).find('span').removeClass('glyphicon-chevron-up');
 				$(this).find('span').addClass('glyphicon-chevron-down');
 			} else {
-				row.child(format(row.data())).show();
+				row.child(showInterfaceDetails(row.data())).show();
 				$(this).find('span').removeClass('glyphicon-chevron-down');
 				$(this).find('span').addClass('glyphicon-chevron-up');
 				// Add to the 'open' array
@@ -356,17 +316,19 @@
 					jQuery.noConflict();
 					$("#ifDescr").val(data.ifDescr);
 					$("#ifAlias").val(data.ifAlias);
-					$("#chargeable").val(true);
+					//$("#chargeable").val(true);
 					tagkeys.forEach(function(item) {
-						$("#portCustomFields #" + item).val('');
+						//$("#portCustomFields #" + item).val('');
+						$("#portCustomFields #" + item).val(data.tags[item]);
 					});
-					$('input[name=porttype]').filter('[value=0]').prop(
+					$('input[name=chargeFlow]').filter('[value=0]').prop(
 							'checked', true);
-					$('input[name=porttype]').filter('[value=1]').prop(
+					$('input[name=chargeFlow]').filter('[value=1]').prop(
 							'checked', false);
-					$('#submitBtn').text('Apply');
+					$('#submitBtn').text('Charge');
 					$('#submitBtn').removeClass('btn-warning');
-					$('#submitBtn').addClass('btn-info');
+					$('#submitBtn').addClass('btn-primary');
+					$('#removeBtn').addClass("hidden");
 					$("#chargingInfo").modal();
 				});
 
@@ -378,68 +340,28 @@
 					jQuery.noConflict();
 					$("#ifDescr").val(data.ifDescr);
 					$("#ifAlias").val(data.ifAlias);
-					$("#chargeable").val(true);
+					//$("#chargeable").val(true);
 					tagkeys.forEach(function(item) {
 						$("#portCustomFields #" + item).val(data.tags[item]);
 					});
-					$('input[name=porttype]').filter(
-							'[value=' + data.portType + ']').prop('checked',
+					$('input[name=chargeFlow]').filter(
+							'[value=' + data.chargeFlow + ']').prop('checked',
 							true);
 					$('#submitBtn').text('Update');
 					$('#submitBtn').removeClass('btn-warning');
-					$('#submitBtn').addClass('btn-info');
+					$('#submitBtn').addClass('btn-primary');
+					$('#removeBtn').removeClass("hidden");
 					$("#chargingInfo").modal();
 				});
 
-		$('#ifTable tbody').on(
-				'click',
-				'tr #delChargingInfo',
-				function() {
-					var data = dt.row($(this).closest('tr')).data();
-					jQuery.noConflict();
-					$("#ifDescr").val(data.ifDescr);
-					$("#ifAlias").val(data.ifAlias);
-					$("#chargeable").val(false);
-					tagkeys.forEach(function(item) {
-						$("#portCustomFields #" + item).val(data.tags[item]);
-					});
-					$('input[name=porttype]').filter(
-							'[value=' + data.portType + ']').prop('checked',
-							true);
-					$('#submitBtn').text('Remove');
-					$('#submitBtn').addClass('btn-warning');
-					$("#chargingInfo").modal();
-				});
+	    $("#submitBtn").on("click", function() {
+	        updateChargingInfo(ip,dt,getSourceInfo);
+	      });
 
-		function updateChargingInfo() {
-
-			var jsonData = "{\"ifDescr\":\"" + $('#ifDescr').val() + "\"";
-			jsonData += ",\"chargeable\":" + $("#chargeable").val();
-			jsonData += ",\"portType\":"
-					+ $('input[name=porttype]:checked').val();
-			jsonData += ",\"tags\":{";
-			tagkeys.forEach(function(item, idx, arr) {
-				jsonData += "\"" + item + "\":\""
-						+ addslashes($("#portCustomFields #" + item).val())
-						+ "\"";
-				if (idx != tagkeys.length - 1) {
-					jsonData += ",";
-				}
-			});
-			jsonData += "}}";
-			console.log("try update:" + jsonData);
-			$.ajax({
-				url : "/api/v1/sources/" + ip + "/interfaces",
-				type : "PUT",
-				contentType : "application/json",
-				data : jsonData,
-				success : function(result) {
-					dt.ajax.reload();
-					getSourceInfo();
-					bootstrap_alert.info(result.Status, 2000);
-				}
-			});
-		}
+	      $("#removeBtn").on("click", function() {
+	        chargeOff(ip,dt,getSourceInfo);
+	      });
+		
 
 		$('#ifStatusUp').on(
 				'click',
@@ -473,8 +395,7 @@
 				function() {
 					getSourceInfo();
 					dt.ajax.url(
-							"/api/v1/sources/" + ip + "/interfaces?trace=on")
-							.load();
+							"/api/v1/sources/" + ip + "/interfaces?trace=on").load();
 				});
 
 		$('#ifNumber').on('click', function() {
@@ -544,24 +465,7 @@
 				}
 			});
 		}
-		function updateIfchargeable(ifdescr, action) {
-			var jsonData = JSON.stringify({
-				"ifDescr" : ifdescr,
-				"chargeable" : action
-			});
-			console.log("update chargable: " + jsonData);
-			$.ajax({
-				url : "/api/v1/sources/" + ip + "/interfaces",
-				type : "PUT",
-				contentType : "application/json",
-				data : jsonData,
-				success : function(result) {
-					dt.ajax.reload();
-					getSourceInfo();
-					bootstrap_alert.info(result.Status, 2000);
-				}
-			});
-		}
+
 	</script>
 </body>
 </html>

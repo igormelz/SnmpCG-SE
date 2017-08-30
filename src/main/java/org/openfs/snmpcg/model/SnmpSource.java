@@ -16,6 +16,7 @@ public final class SnmpSource implements Serializable {
     private String sysDescr;
     private String sysName;
     private String sysLocation;
+    private String sysObjectID;
     private final Map<String, SnmpInterface> iftable = new HashMap<String, SnmpInterface>();
     private long pollTime;
     private String community;
@@ -180,5 +181,13 @@ public final class SnmpSource implements Serializable {
     public void setTimeout(int timeout) {
         this.timeout = timeout;
         target = SnmpCommunityTarget.createTarget(ipAddress, community, retries, timeout);
+    }
+
+    public String getSysObjectID() {
+        return sysObjectID;
+    }
+
+    public void setSysObjectID(String sysObjectID) {
+        this.sysObjectID = sysObjectID;
     }
 }

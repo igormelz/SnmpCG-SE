@@ -204,6 +204,8 @@ public class SourceInventoryService {
         map.put("sysUptime", source.getSysUptime());
         map.put("sysName", source.getSysName());
         map.put("sysDescr", source.getSysDescr());
+        map.put("sysObjectID", source.getSysObjectID());
+        map.put("sysLocation", source.getSysLocation());
         map.put("snmpCommunity", source.getTarget().getCommunity().toString());
         map.put("snmpRetries", source.getTarget().getRetries());
         map.put("snmpTimeout", source.getTarget().getTimeout() / 1000L);
@@ -269,7 +271,7 @@ public class SourceInventoryService {
             iface.put("pollInOctets", e.getPollInOctets());
             iface.put("pollOutOctets", e.getPollOutOctets());
             iface.put("tags", e.getTags());
-            iface.put("portType", e.getPortType());
+            iface.put("chargeFlow", e.getChargeFlow());
             return iface;
         }).collect(Collectors.toList());
         return answer;
@@ -359,14 +361,20 @@ public class SourceInventoryService {
             source.getInterfaces().stream().filter(SnmpInterface::isChargeable).forEach(ifEntry -> {
                 sb.append(source.getIpAddress()).append(fieldSeparator);
                 for (String skey : (LinkedHashSet<String>)config.get("sourceTagKeys")) {
-                    sb.append(source.getTags().get(skey).replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
+                    if (source.getTags().containsKey(skey)) {
+                        sb.append(source.getTags().get(skey).replace(fieldSeparator.charAt(0), '.'));
+                    }
+                    sb.append(fieldSeparator);
                 }
                 sb.append(ifEntry.getIfDescr()).append(fieldSeparator);
                 for (String ikey : (LinkedHashSet<String>)config.get("interfaceTagKeys")) {
-                    sb.append(ifEntry.getTags().get(ikey).replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
+                    if (ifEntry.getTags().containsKey(ikey)) {
+                        sb.append(ifEntry.getTags().get(ikey).replace(fieldSeparator.charAt(0), '.'));
+                    }
+                    sb.append(fieldSeparator);
                 }
-                //sb.append(ifEntry.getIfAlias().replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
-                if (ifEntry.getPortType() == SnmpConstants.EGRESS) {
+                // swap in out for egress port
+                if (ifEntry.getChargeFlow() == SnmpConstants.EGRESS) {
                     sb.append(ifEntry.getPollOutOctets()).append(fieldSeparator);
                     sb.append(ifEntry.getPollInOctets()).append(fieldSeparator);
                 } else {
@@ -502,8 +510,8 @@ public class SourceInventoryService {
                     updated = true;
                 }
 
-                if (data.containsKey("portType")) {
-                    ifEntry.setPortType((int)data.get("portType"));
+                if (data.containsKey("chargeFlow")) {
+                    ifEntry.setChargeFlow((int)data.get("chargeFlow"));
                     updated = true;
                 }
 

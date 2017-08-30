@@ -55,15 +55,6 @@
 		</div>
 		<div class="row">
 			<ul class="nav nav-pills">
-				<!-- 
-				<li><a href="#" class="text-default" data-toggle="modal"
-					title="add source" id="addNewBtn" data-target="#addNewSource"><span
-						class="glyphicon glyphicon-plus" aria-hidden="true"></span> New</a></li>
-						-->
-				<li><a href="#" class="text-default" title="add source"
-					id="addNewBtn" onclick="addNewSource()"> <span
-						class="glyphicon glyphicon-plus" aria-hidden="true"></span> New
-				</a></li>
 				<li><a href="#" title="view all sources" id="filter_all"
 					class="text-info"> <span class="glyphicon glyphicon-filter"
 						aria-hidden="true"></span> No Filter <span id="allVal"
@@ -84,6 +75,10 @@
 						class="glyphicon glyphicon-filter" aria-hidden="true"></span>
 						Pending <span id="unknownVal" class="badge"></span>
 				</a></li>
+				<li><a href="#" class="text-default" title="add source"
+					id="addNewBtn" onclick="addNewSource()"> <span
+						class="glyphicon glyphicon-plus" aria-hidden="true"></span> New
+				</a></li>
 			</ul>
 		</div>
 
@@ -91,13 +86,12 @@
 			<thead>
 				<tr>
 					<td></td>
-					<td>Source IP</td>
-					<td>Actions</td>
-					<td>Info</td>
+					<td>Source</td>
+					<td>Tags</td>
+					<td>Interfaces (Charge/Trace)</td>
 					<td>last poll</td>
 					<td>status</td>
 					<td>response (ms)</td>
-					<td>Charge/Trace</td>
 				</tr>
 			</thead>
 			<tbody>
@@ -152,7 +146,6 @@
 					<button class="btn btn-primary" type="submit" data-dismiss="modal"
 						onclick="addSource()">Add source</button>
 				</div>
-				</form>
 			</div>
 		</div>
 	</div>
@@ -183,8 +176,8 @@
 	</div>
 
 	<!-- edit -->
-	<div class="modal fade" id="editSourceSettings" tabindex="-1" role="dialog"
-		aria-labelledby="myModalLabel">
+	<div class="modal fade" id="editSourceSettings" tabindex="-1"
+		role="dialog" aria-labelledby="myModalLabel">
 		<div class="modal-dialog modal-sm" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
@@ -234,10 +227,6 @@
 	<script src="js/script.js"></script>
 	<script>
 		var tagkeys = [];
-		var configProp = null;
-
-		//$("div#action-success").empty().hide();
-		//$("div#action-error").empty().hide();
 
 		function addField(name) {
 			var field = "<div class='form-group'><label>"
@@ -271,14 +260,14 @@
 			}
 			jsonData += ",\"tags\":{";
 			tagkeys.forEach(function(item, idx, arr) {
-				jsonData += "\""
-						+ item
-						+ "\":\""
-						+ addslashes($(
-								"#updateSourceForm input[id='" + item + "']")
-								.val()) + "\"";
-				if (idx != tagkeys.length - 1) {
-					jsonData += ",";
+				var value = $("#updateSourceForm input[id='" + item + "']")
+						.val();
+				if (value != "") {
+					jsonData += "\"" + item + "\":\"" + addslashes(value)
+							+ "\"";
+					if (idx != tagkeys.length - 1) {
+						jsonData += ",";
+					}
 				}
 			});
 			jsonData += "}}";
@@ -321,14 +310,14 @@
 				}
 				jsonData += ",\"tags\":{";
 				tagkeys.forEach(function(item, idx, arr) {
-					jsonData += "\""
-							+ item
-							+ "\":\""
-							+ addslashes($(
-									"#newSourceForm input[id='" + item + "']")
-									.val()) + "\"";
-					if (idx != tagkeys.length - 1) {
-						jsonData += ",";
+					var value = $("#newSourceForm input[id='" + item + "']")
+							.val();
+					if (value != "") {
+						jsonData += "\"" + item + "\":\"" + addslashes(value)
+								+ "\"";
+						if (idx != tagkeys.length - 1) {
+							jsonData += ",";
+						}
 					}
 				});
 				jsonData += "}}";
@@ -365,57 +354,6 @@
 			}
 		}
 
-		function getConfig() {
-			$.ajax({
-				url : "/api/v1/sources/config",
-				success : function(conf) {
-					conf.sourceTagKeys.forEach(function(key) {
-						addField(key);
-					});
-					configProp = conf;
-					//$('#community').val(conf.snmpCommunity);
-					//$('#retries').val(conf.snmpRetries);
-					//$('#timeout').val(conf.snmpTimeout);
-				}
-			});
-		}
-
-		// fill counter
-		function fillCounter() {
-			$
-					.ajax({
-						url : "/api/v1/sources?stats",
-						success : function(stats) {
-							var up = (stats.SUCCESS) ? parseInt(stats.SUCCESS)
-									: 0;
-							var pending = (stats.UNKNOWN) ? parseInt(stats.UNKNOWN)
-									: 0;
-							var down = (stats.TIMEOUT) ? parseInt(stats.TIMEOUT)
-									: 0;
-							down += (stats.NO_PDU) ? parseInt(stats.NO_PDU) : 0;
-							down += (stats.NO_IFTABLE) ? parseInt(stats.NO_IFTABLE)
-									: 0;
-							$('#allVal').text(up + pending + down);
-							$('#successVal').text(up);
-							$('#timeoutVal').text(down);
-							$('#unknownVal').text(pending);
-						}
-					});
-		}
-
-		function format(source) {
-			var answer = "<ul class=\"list-group small\">";
-			answer += "<li class=\"list-group-item\"><label>sysDescr:</label> ";
-			answer += source.sysDescr + "</li>";
-			answer += "<li class=\"list-group-item\"><label>sysUpTime:</label> ";
-			answer += uptime(source.sysUptime);
-			answer += "&nbsp;<label>ifNumber:</label> ";
-			answer += source.ifNumber + " (" + source.statusUpCounter
-					+ " is up)</li>";
-			answer += "</ul>";
-			return answer;
-		}
-
 		// Array to track the ids of the details displayed rows
 		var detailRows = [];
 
@@ -428,35 +366,22 @@
 									sources
 											.forEach(function(source) {
 
-												source.actionGroup = "<div class='btn-group btn-group-xs'>";
-												source.actionGroup += "<a href='#' id='editSrc' title='Change settings' class='btn btn-info'><span class=\"glyphicon glyphicon-pencil\" aria-hidden=\"true\"></span></a>";
-												source.actionGroup += "<a href='#' class='btn btn-danger' id='delSrc' title='Remove source'><span class=\"glyphicon glyphicon-remove\" aria-hidden=\"true\"></span></a>";
-												source.actionGroup += "</div>";
+												source.statusInfo = showSrcStatus(source.Status);
 
-												if (source.Status == 'SUCCESS') {
-													source.Status = "<span class=\"glyphicon glyphicon-ok-sign text-success\" aria-hidden=\"true\" title='Success'></span>";
-												} else if (source.Status == 'UNKNOWN') {
-													source.Status = "<span class=\"glyphicon glyphicon-question-sign text-primary\" aria-hidden=\"true\" title='Unknown'></span>";
-												} else {
-													source.Status = "<span class=\"glyphicon glyphicon-warning-sign text-danger\" title='"
-                      + source.Status
-                      + "'></span>";
-												}
-
-												source.SourceInfo = "<a title=\"click to view interfaces\" href=\"view.html?ip="
-                            + source.ipAddress
-                            + "\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a>&nbsp;";
-												source.SourceInfo += source.ipAddress
-														+ ((source.sysName) ? "<br><small>("
-																+ source.sysName
-																+ ")</small>"
-																: "");
+												source.SourceInfo = source.ipAddress;
+												//source.SourceInfo += "<div class='btn-group btn-group-xs'>";
+												source.SourceInfo += "&nbsp;<a href='#' id='editSrc' title='Change settings' class='small'><span class=\"glyphicon glyphicon-pencil\" aria-hidden=\"true\"></span></a>";
+												source.SourceInfo += "&nbsp;<a href='#' id='delSrc' title='Remove source' class='small text-danger'><span class=\"glyphicon glyphicon-trash\" aria-hidden=\"true\"></span></a>";
+												// source.SourceInfo += "</div>";
+						            source.SourceInfo += ((source.sysName) ? "<br><small>("+source.sysName+")</small>":"");
 
 												source.sourceTags = showTagsInfo(source.tags);
 
-												source.counters = source.chargeableCounter
-														+ "/"
-														+ source.traceCounter;
+												
+												source.counters = "<a title=\"click to view interfaces\" href=\"view.html?ip="+source.ipAddress+"\">";
+												source.counters += "<span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a>&nbsp;";
+												source.counters += source.chargeableCounter + "/" + source.traceCounter;
+												
 												if (source.pollTime == 0) {
 													source.pollTime = "none";
 												} else {
@@ -478,19 +403,16 @@
 										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-down\" aria-hidden=\"true\"></span>"
 									}, {
 										data : "SourceInfo"
-					                  }, {
-					                      "orderable" : false,
-					                      "data" : "actionGroup"
 									}, {
 										data : "sourceTags"
+					        }, {
+					          data : "counters"
 									}, {
 										data : "pollTime"
 									}, {
-										"data" : "Status"
+										"data" : "statusInfo"
 									}, {
 										data : "pollResponse"
-									}, {
-										data : "counters"
 									} ],
 							"order" : [ [ 1, 'asc' ] ]
 						});
@@ -500,7 +422,7 @@
 		clusterInfo();
 
 		$('#useSystemCommunity').on('click', function() {
-			  enableDefaultValue(this.checked);
+			enableDefaultValue(this.checked);
 		});
 
 		$('#srcTable tbody').on('click', 'tr td.detail', function() {
@@ -514,7 +436,7 @@
 				$(this).find('span').removeClass('glyphicon-chevron-up');
 				$(this).find('span').addClass('glyphicon-chevron-down');
 			} else {
-				row.child(format(row.data())).show();
+				row.child(formatSrcDetail(row.data())).show();
 				$(this).find('span').removeClass('glyphicon-chevron-down');
 				$(this).find('span').addClass('glyphicon-chevron-up');
 				// Add to the 'open' array

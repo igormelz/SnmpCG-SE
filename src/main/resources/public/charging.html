@@ -72,13 +72,17 @@
 			<table id="chargingTable" class="table table-condensed">
 				<thead>
 					<tr>
-						<td></td>
 						<td>Source</td>
-						<td>SourceInfo</td>
 						<td>ifDescr</td>
-						<td>CharginType</td>
-						<td>ChargingInfo</td>
+						<td>Charge</td>
 						<td>Trace</td>
+						<td>ChargeFlow</td>
+						<td>Tags</td>
+						<td>Status</td>
+						<td>Mbps In</td>
+						<td>Mbps Out</td>
+						<td>bytes In</td>
+						<td>bytes Out</td>
 					</tr>
 				</thead>
 				<tbody>
@@ -88,6 +92,56 @@
 	</div>
 	<!-- /.container -->
 
+	<!-- edit -->
+	<div class="modal fade" id="chargingInfo" tabindex="-1" role="dialog"
+		aria-labelledby="myModalLabel">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal"
+						aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+					<h4 class="modal-title" id="myModalLabel1">Interface Charging
+						Info</h4>
+				</div>
+				<div class="modal-body">
+					<input type="hidden" id="chargeable">
+					<div class="form-group">
+						<label for="ipAddress">Source:</label> <input readonly="readonly"
+							class="form-control" type="text" id="ipAddress">
+					</div>
+					<div class="form-group">
+						<label for="ifDescr">ifDescr:</label> <input readonly="readonly"
+							class="form-control" type="text" id="ifDescr">
+					</div>
+
+					<div class="form-group">
+						<label for="ifAlias">ifAlias:</label> <input readonly="readonly"
+							class="form-control" type="text" id="ifAlias">
+					</div>
+
+					<div id="portCustomFields" class="form-group"></div>
+
+					<label>ChargeFlow:</label>
+					<div class="form-group">
+						<label class="radio-inline" title="outgoing port to CPE"><input
+							type="radio" name="chargeFlow" value="0">PE Downlink</label> <label
+							class="radio-inline" title="incoming port on CPE"><input
+							type="radio" name="chargeFlow" value="1">CPE Uplink</label>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					<button class="btn btn-primary" type="submit" data-dismiss="modal"
+						id="submitBtn">Update</button>
+					<button class="btn btn-warning" type="submit" data-dismiss="modal"
+						id="removeBtn">Do not charge</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<script src="js/vendor/jquery.min.js"></script>
 	<script src="js/vendor/bootstrap.min.js"></script>
 	<script src="js/vendor/datatables.min.js"></script>
@@ -95,109 +149,122 @@
 	<script src="js/vendor/dataTables.bootstrap.min.js"></script>
 	<script src="js/script.js"></script>
 	<script>
-		$(document)
-				.ready(
-						function() {
-							var chTable = $('#chargingTable')
-									.DataTable(
-											{
-												"ajax" : {
-													"url" : "/api/v1/interfaces?chargeable",
-													"dataSrc" : function(data) {
-														data
-																.forEach(function(
-																		element) {
-																	formatChargingInterface(element);
-																});
-														return data;
-													}
-												},
-												"lengthMenu" : [
-														[ 30, 50, 100, -1 ],
-														[ 30, 50, 100, "All" ] ],
-												"columns" : [ {
-													"data" : "status"
-												}, {
-													"data" : "sourceName"
-												}, {
-													"data" : "sourceInfo"
-												}, {
-													"data" : "ifDescr"
-												}, {
-													"data" : "portType"
-												}, {
-													"data" : "chargeInfo"
-												}, {
-													"data" : "action",
-													"searchable" : false,
-													"orderable" : false
-												} ],
-												"order" : [ [ 3, 'desc' ] ]
-											});
+		var dt = $('#chargingTable').DataTable({
+			"ajax" : {
+				"url" : "/api/v1/interfaces?chargeable",
+				"dataSrc" : function(data) {
+					data.forEach(function(element) {
+						formatChargingInterface(element);
+					});
+					return data;
+				}
+			},
+			"lengthMenu" : [ [ 30, 50, 100, -1 ], [ 30, 50, 100, "All" ] ],
+			"columns" : [ {
+				"data" : "sourceName"
+			}, {
+				"data" : "ifDescr"
+			}, {
+				"data" : "chargeAction",
+				"searchable" : false,
+				"orderable" : false
+			}, {
+				"data" : "traceAction",
+				"searchable" : false,
+				"orderable" : false
+			}, {
+				"data" : "chargeFlowInfo"
+			}, {
+				"data" : "chargeInfo"
+			}, {
+				"data" : "status"
+			}, {
+				"data" : "rate_in",
+				"searchable" : false,
+				"orderable" : false
+			}, {
+				"data" : "rate_out",
+				"searchable" : false,
+				"orderable" : false
+			}, {
+				"data" : "bytes_in",
+				"searchable" : false,
+				"orderable" : false
+			}, {
+				"data" : "bytes_out",
+				"searchable" : false,
+				"orderable" : false
+			} ],
+			"order" : [ [ 5, 'desc' ] ]
+		});
 
-							$('#chargingTable tbody')
-									.on(
-											'click',
-											'tr #traceBtn',
-											function() {
-												var ifEntry = chTable.row(
-														$(this).closest('tr'))
-														.data();
-												var jsonData = JSON
-														.stringify({
-															"ifDescr" : ifEntry.ifDescr,
-															"trace" : (!ifEntry.trace)
-														});
-												console
-														.log("source:"
-																+ ifEntry.source.ipAddress
-																+ " update trace: "
-																+ jsonData);
-												$
-														.ajax({
-															url : "/api/v1/sources/"
-																	+ ifEntry.source.ipAddress
-																	+ "/interfaces",
-															type : "PUT",
-															contentType : "application/json",
-															data : jsonData,
-															success : function(
-																	result) {
-																chTable.ajax
-																		.reload();
-																getChargingStats();
-																bootstrap_alert
-																		.info(
-																				result.Status,
-																				2000);
-															}
-														});
+		$('#chargingTable tbody').on(
+				'click',
+				'tr #editChargingInfo',
+				function() {
+					var data = dt.row($(this).closest('tr')).data();
+					$("#ipAddress").val(data.source.ipAddress);
+					$("#ifDescr").val(data.ifDescr);
+					$("#ifAlias").val(data.ifAlias);
+					$("#chargeable").val(true);
+					Object.keys(data.tags).forEach(function(item) {
+						console.log(item);
+						$("#portCustomFields #" + item).val(data.tags[item]);
+					});
+					$('input[name=chargeFlow]').filter(
+							'[value=' + data.chargeFlow + ']').prop('checked',
+							true);
+					jQuery.noConflict();
+					$("#chargingInfo").modal();
+				});
 
-											});
-
-							$('#ifChargeable')
-									.on(
-											'click',
-											function() {
-												getChargingStats();
-												chTable.ajax
-														.url(
-																"/api/v1/interfaces?chargeable")
-														.load();
-											});
-
-							$('#ifTraced').on(
-									'click',
-									function() {
-										getChargingStats();
-										chTable.ajax.url(
-												"/api/v1/interfaces?trace")
-												.load();
-									});
-
+		$('#chargingTable tbody').on(
+				'click',
+				'tr #traceBtn',
+				function() {
+					var ifEntry = dt.row($(this).closest('tr')).data();
+					var jsonData = JSON.stringify({
+						"ifDescr" : ifEntry.ifDescr,
+						"trace" : (!ifEntry.trace)
+					});
+					console.log("source:" + ifEntry.source.ipAddress
+							+ " update trace: " + jsonData);
+					$.ajax({
+						url : "/api/v1/sources/" + ifEntry.source.ipAddress
+								+ "/interfaces",
+						type : "PUT",
+						contentType : "application/json",
+						data : jsonData,
+						success : function(result) {
+							dt.ajax.reload();
 							getChargingStats();
-							clusterInfo();
-						});
+							bootstrap_alert.info(result.Status, 2000);
+						}
+					});
+
+				});
+
+		$('#ifChargeable').on('click', function() {
+			getChargingStats();
+			dt.ajax.url("/api/v1/interfaces?chargeable").load();
+		});
+
+		$('#ifTraced').on('click', function() {
+			getChargingStats();
+			dt.ajax.url("/api/v1/interfaces?trace").load();
+		});
+
+		$("#submitBtn").on("click", function() {
+			updateChargingInfo($("#ipAddress").val(),dt,getChargingStats);
+		});
+
+		$("#removeBtn").on("click", function() {
+			chargeOff($("#ipAddress").val(),dt,getChargingStats);
+		});
+
+		getChargingStats();
+		clusterInfo();
+		getPortConfig();
 	</script>
 </body>
 </html>

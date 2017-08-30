@@ -1,3 +1,6 @@
+var configProp = null;
+var tagkeys = [];
+
 bootstrap_alert = function() {
 }
 
@@ -24,13 +27,22 @@ var clusterInfo = function() {
 
 function showTagsInfo(tags) {
 	var answer = "";
-	Object.keys(tags).forEach(function(item) {
-		answer += "<abbr title='" + item + "'>" + tags[item] + "</abbr>&nbsp;";
-	});
+	Object
+			.keys(tags)
+			.forEach(
+					function(item) {
+						if (tags[item]) {
+							answer += "<span class='label label-default label-small' title='"
+									+ tags[item]
+									+ "'>"
+									+ item
+									+ "</span>&nbsp;";
+						}
+					});
 	return answer;
 }
 
-function getChargingStats() {
+var getChargingStats = function() {
 	$.ajax({
 		url : "/api/v1/interfaces?stats",
 		success : function(stats) {
@@ -40,12 +52,44 @@ function getChargingStats() {
 	});
 }
 
+// fill counter
+function fillCounter() {
+	$.ajax({
+		url : "/api/v1/sources?stats",
+		success : function(stats) {
+			var up = (stats.SUCCESS) ? parseInt(stats.SUCCESS) : 0;
+			var pending = (stats.UNKNOWN) ? parseInt(stats.UNKNOWN) : 0;
+			var down = (stats.TIMEOUT) ? parseInt(stats.TIMEOUT) : 0;
+			down += (stats.NO_PDU) ? parseInt(stats.NO_PDU) : 0;
+			down += (stats.NO_IFTABLE) ? parseInt(stats.NO_IFTABLE) : 0;
+			$('#allVal').text(up + pending + down);
+			$('#successVal').text(up);
+			$('#timeoutVal').text(down);
+			$('#unknownVal').text(pending);
+		}
+	});
+}
+
+function getConfig() {
+	$.ajax({
+		url : "/api/v1/sources/config",
+		success : function(conf) {
+			conf.sourceTagKeys.forEach(function(key) {
+				addField(key);
+			});
+			configProp = conf;
+		}
+	});
+}
 
 function enableDefaultValue(e) {
 	if (e) {
 		$('#community').prop('disabled', true);
+		$('#community').val(configProp.snmpCommunity);
 		$('#retries').prop('disabled', true);
+		$('#retries').val(configProp.snmpRetries);
 		$('#timeout').prop('disabled', true);
+		$('#timeout').val(configProp.snmpTimeout);
 	} else {
 		$('#community').prop('disabled', false);
 		$('#retries').prop('disabled', false);
@@ -134,6 +178,184 @@ function getUrlParameter(sParam) {
 	}
 }
 
+function showSrcStatus(status) {
+	if (status == 'SUCCESS') {
+		return "<lable class='label label-success'><span class=\"glyphicon glyphicon-ok-sign\"></span> Ok</label>"
+		// return "<span class=\"glyphicon glyphicon-ok-sign text-success\"
+		// aria-hidden=\"true\" title='Success'></span>";
+	}
+	if (status == 'UNKNOWN') {
+		return "<lable class='label label-info'><span class=\"glyphicon glyphicon-question-sign\"></span> Pending</label>";
+		// return "<span class=\"glyphicon glyphicon-question-sign
+		// text-primary\" aria-hidden=\"true\" title='Unknown'></span>";
+	}
+	return "<lable class='label label-danger'><span class=\"glyphicon glyphicon-exclamation-sign\"></span> "
+			+ status + "</label>";
+	// return "<span class=\"glyphicon glyphicon-warning-sign text-danger\"
+	// title='" + status + "'></span>";
+}
+
+function formatSrcDetail(source) {
+	if (source.Status == 'UNKNOWN') {
+		return "<ul class='list-group'><li class='list-group-item'>waiting for schedule polling source status ...</li></ul>";
+	}
+	if (source.Status == 'SUCCESS' || source.sysObjectID != null) {
+		var answer = "<div class='table-responsive'><table class='table table-striped small'><tbody>";
+		answer += "<tr><th>sysName:</th><td>" + source.sysName + "</td>";
+		answer += "<tr><th>sysDescr:</th><td>" + source.sysDescr + "</td>";
+		answer += "<tr><th>sysObjectID:</th><td>" + source.sysObjectID
+				+ "</td>";
+		answer += "<tr><th>sysUpTime:</th><td>" + uptime(source.sysUptime)
+				+ "</td>";
+		answer += "<tr><th>ifNumber:</th><td>" + source.ifNumber + " ("
+				+ source.statusUpCounter + " is up)</td>";
+		if (source.tags) {
+			Object
+					.keys(source.tags)
+					.forEach(
+							function(item) {
+								if (source.tags[item]) {
+									answer += "<tr><td><span class='label label-default'>"
+											+ item
+											+ ":</span></td><td>"
+											+ source.tags[item] + "</td>";
+								}
+							});
+		}
+		answer += "</tbody></table></div>";
+		return answer;
+	}
+	return "<ul class='list-group'><li class='list-group-item'>No info</li></ul>";
+}
+
+function fmtIfStatus(s) {
+	return (s == 1) ? "Up" : "Down";
+}
+
+function fmtPortType(t) {
+	return (t == 0) ? "<span class='label label-info' title='Egress'>PE Downlink</span>"
+			: "<span class='label label-primary' title='Ingress'>CPE Uplink</span>";
+}
+
+function showInterfaceStatus(s) {
+	if (s) {
+		return "<lable class='label label-success'><span class=\"glyphicon glyphicon-ok-sign\"></span> Up</label>"
+	} else {
+		return "<label class='label label-warning'><span class='glyphicon glyphicon-exclamation-sign' title='down'></span> Down</label>";
+	}
+}
+
+function showInterfaceDetails(i) {
+	var answer = "<div class='table-responsive'><table class='table table-striped small'><tbody>";
+	answer += "<tr><th width=\"20%\">Interface Index:</th><td>" + i.ifIndex
+			+ "</td>";
+	answer += "</tr><tr><th width=\"20%\">Alias:</th><td>" + i.ifAlias
+			+ "</td>";
+	answer += "</tr><tr><th width=\"20%\">Status (Adm/Op):</th><td>"
+			+ fmtIfStatus(i.ifAdminStatus) + "/" + fmtIfStatus(i.ifOperStatus)
+			+ "</td>";
+	// answer += "</tr><tr><th width=\"10%\">ifOperStatus:</th><td>" +
+	// d.ifOperStatus + "</td>";
+	answer += "</tr><tr><th width=\"20%\">ifInOctets:</th><td>"
+			+ i.ifInOctets.value + " [" + i.ifInOctets.type + "]</td>";
+	answer += "</tr><tr><th width=\"20%\">ifOutOctets:</th><td>"
+			+ i.ifOutOctets.value + " [" + i.ifOutOctets.type + "]</td>";
+	if (i.tags) {
+		Object.keys(i.tags).forEach(
+				function(item) {
+					if (i.tags[item]) {
+						answer += "<tr><td><span class='label label-default'>"
+								+ item + ":</span></td><td>" + i.tags[item]
+								+ "</td>";
+					}
+				});
+	}
+	if (i.chargeable) {
+		answer += "<tr><th>ChargeFlow</th><td>" + fmtPortType(i.chargeFlow)
+				+ "</td>";
+	}
+	answer += "</tbody></table></div>";
+	return answer;
+}
+
+function addIfField(name) {
+	var field = "<div class='input-group'><label>"
+			+ name
+			+ ":</label><input id='"
+			+ name
+			+ "' name='"
+			+ name
+			+ "' type='text' class='form-control' placeholder='field-value'></div>";
+	$('#portCustomFields').append(field);
+}
+
+function getPortConfig() {
+	$.ajax({
+		url : "/api/v1/sources/config",
+		success : function(conf) {
+			conf.interfaceTagKeys.forEach(function(key) {
+				addIfField(key);
+				tagkeys.push(key);
+			});
+		}
+	});
+}
+
+function chargeOff(ip,table,stats) {
+	var jsonData = JSON.stringify({
+		"ifDescr" : $('#ifDescr').val(),
+		"chargeable" : false
+	});
+	console.log("update chargable: " + jsonData);
+	$.ajax({
+		url : "/api/v1/sources/" + ip + "/interfaces",
+		type : "PUT",
+		contentType : "application/json",
+		data : jsonData,
+		success : function(result) {
+			table.ajax.reload();
+			stats();
+			bootstrap_alert.info(result.Status, 2000);
+		}
+	});
+}
+
+function updateChargingInfo(ip,table,stats) {
+	var jsonData = "{\"ifDescr\":\""
+			+ $('#ifDescr').val() + "\"";
+	jsonData += ",\"chargeable\":true";
+	jsonData += ",\"chargeFlow\":"
+			+ $('input[name=chargeFlow]:checked')
+					.val();
+	jsonData += ",\"tags\":{";
+	tagkeys.forEach(function(item, idx, arr) {
+		jsonData += "\""
+				+ item
+				+ "\":\""
+				+ addslashes($(
+						"#portCustomFields #"
+								+ item).val())
+				+ "\"";
+		if (idx != tagkeys.length - 1) {
+			jsonData += ",";
+		}
+	});
+	jsonData += "}}";
+	console.log("try update:" + jsonData);
+	$.ajax({
+		url : "/api/v1/sources/" + ip
+				+ "/interfaces",
+		type : "PUT",
+		contentType : "application/json",
+		data : jsonData,
+		success : function(result) {
+			table.ajax.reload();
+			stats();
+			bootstrap_alert.info(result.Status,
+					2000);
+		}
+	});
+}
 // format charging interfaces
 function formatChargingInterface(ifEntry) {
 	// source
@@ -146,19 +368,30 @@ function formatChargingInterface(ifEntry) {
 					+ ifEntry.source.sysName + ")</small></span>" : "</span>");
 	ifEntry.sourceInfo = showTagsInfo(ifEntry.source.tags);
 
-	ifEntry.status = (ifEntry.up) ? "<lable class='label label-info'><span class=\"glyphicon glyphicon-ok-sign\"></span> Up</label>"
-			: "<label class='label label-warning'><span class='glyphicon glyphicon-exclamation-sign' title='down'></span> Down</label>";
+	ifEntry.status = showInterfaceStatus(ifEntry.up);
 
-	ifEntry.portType = (ifEntry.portType == 0) ? "<span class='label label-primary'>PE Downlink</span>"
-			: "<span class='label label-info'>CPE Uplink</span>";
+	ifEntry.chargeFlowInfo = fmtPortType(ifEntry.chargeFlow);
 
 	ifEntry.chargeInfo = showTagsInfo(ifEntry.tags);
 
-	ifEntry.action = "<a href='#' title=\"click to trace off\" id='traceBtn'>";
+	ifEntry.chargeAction = "<a href='#' id='editChargingInfo' class=\"btn btn-primary btn-xs\" title='Edit ChargingInfo'>";
+	ifEntry.chargeAction += "<span class=\"glyphicon glyphicon-stats\"></span></a>&nbsp;";
+
+	ifEntry.traceAction = "<a href='#' title=\"click to trace off\" id='traceBtn'>";
 	if (ifEntry.trace) {
-		ifEntry.action += "<span class=\"glyphicon glyphicon-check\" aria-hidden=\"true\"></span></a>";
+		ifEntry.traceAction += "<span class=\"glyphicon glyphicon-check\" aria-hidden=\"true\"></span></a>";
 	} else {
-		ifEntry.action += "<span class=\"glyphicon glyphicon-unchecked\" aria-hidden=\"true\"></span></a>";
+		ifEntry.traceAction += "<span class=\"glyphicon glyphicon-unchecked\" aria-hidden=\"true\"></span></a>";
 	}
 
+	// swap in out for egress port
+	if (ifEntry.chargeFlow == 0) {
+		ifEntry.pollInOctets = [ ifEntry.pollOutOctets,
+				ifEntry.pollOutOctets = ifEntry.pollInOctets ][0];
+	}
+
+	ifEntry.rate_in = bandwidth(ifEntry.pollInOctets, 30000);
+	ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets);
+	ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets);
+	ifEntry.rate_out = bandwidth(ifEntry.pollOutOctets, 30000);
 }
