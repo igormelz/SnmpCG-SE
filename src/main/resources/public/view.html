@@ -86,9 +86,9 @@
 				<tr>
 					<td></td>
 					<td>ifDescr</td>
-					<td>Charge</td>
-					<td>Trace</td>
 					<td>Tags</td>
+					<td>ChargeFlow</td>
+					<td>Trace</td>
 					<td>Status</td>
 					<td>Mbps In</td>
 					<td>Mbps Out</td>
@@ -116,7 +116,7 @@
 						Info</h4>
 				</div>
 				<div class="modal-body">
-				
+
 					<div class="form-group">
 						<label for="ifDescr">ifDescr:</label> <input readonly="readonly"
 							class="form-control" type="text" id="ifDescr">
@@ -132,17 +132,17 @@
 					<label>ChargeFlow:</label>
 					<div class="form-group">
 						<label class="radio-inline" title="outgoing port to CPE"><input
-							type="radio" name="chargeFlow" value="0">PE Downlink</label> <label
+							type="radio" name="chargeFlow" value="0">Downlink</label> <label
 							class="radio-inline" title="incoming port on CPE"><input
-							type="radio" name="chargeFlow" value="1">CPE Uplink</label>
+							type="radio" name="chargeFlow" value="1">Uplink</label>
 					</div>
 				</div>
 				<div class="modal-footer">
 					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 					<button class="btn btn-primary" type="submit" data-dismiss="modal"
 						id="submitBtn">Add/Update</button>
-					<button class="btn btn-warning hidden" type="submit" data-dismiss="modal"
-						id="removeBtn">Do not charge</button>
+					<button class="btn btn-warning hidden" type="submit"
+						data-dismiss="modal" id="removeBtn">Do not charge</button>
 				</div>
 			</div>
 		</div>
@@ -154,9 +154,7 @@
 	<script src="js/vendor/dataTables.bootstrap.min.js"></script>
 	<script src="js/script.js"></script>
 	<script>
-
-
-	var getSourceInfo =	function() {
+		var getSourceInfo = function() {
 			$.ajax({
 				url : "/api/v1/sources/" + ip,
 				success : function(source) {
@@ -187,51 +185,9 @@
 								url : "/api/v1/sources/" + ip
 										+ "/interfaces?status=up",
 								dataSrc : function(ifTable) {
-									ifTable
-											.forEach(function(ifEntry) {
-
-												ifEntry.chargeInfo = showTagsInfo(ifEntry.tags);
-												ifEntry.actionTrace = "";
-												ifEntry.action = "";//"<div class='btn-group btn-group-xs'>";
-
-												if (ifEntry.chargeable) {
-
-													ifEntry.action += "<a href='#' id='editChargingInfo' class=\"btn btn-primary btn-xs\" title='Edit ChargingInfo'>";
-													ifEntry.action += "<span class=\"glyphicon glyphicon-stats\"></span></a>&nbsp;";
-													//ifEntry.action += "<a title=\"charge off\" class=\"btn btn-warning\" id=\"delChargingInfo\">";
-													//ifEntry.action += "<span class=\"glyphicon glyphicon-remove\"></span></a>";
-
-													if (ifEntry.trace) {
-														ifEntry.actionTrace += "<a title=\"click to trace off\" onclick=\"updateIfTrace('"
-																+ ifEntry.ifDescr
-																+ "',false)\">";
-														ifEntry.actionTrace += "<span class=\"glyphicon glyphicon-check\" aria-hidden=\"true\"></span></a>";
-													} else {
-														ifEntry.actionTrace += "<a title=\"click to trace\" onclick=\"updateIfTrace('"
-																+ ifEntry.ifDescr
-																+ "',true)\">";
-														ifEntry.actionTrace += "<span class=\"glyphicon glyphicon-unchecked\" aria-hidden=\"true\"></span></a>";
-													}
-												} else {
-													// ask for charge
-													ifEntry.action += "<a title=\"add to charge\" class=\"btn btn-default btn-xs\" id=\"addChargeInfo\">";
-													ifEntry.action += "<span class=\"glyphicon glyphicon-stats\" aria-hidden=\"true\"></span></a>";
-												}
-												//ifEntry.action += "</div>";
-
-												ifEntry.status = showInterfaceStatus(ifEntry.up);
-
-												ifEntry.circuit = ifEntry.ifDescr
-												//+ ((ifEntry.ifAlias) ? "<br><small>("+ ifEntry.ifAlias+ ")</small>": "");
-												ifEntry.rate_in = bandwidth(
-														ifEntry.pollInOctets,
-														30000);
-												ifEntry.bytes_in = fmtBytes(ifEntry.pollInOctets);
-												ifEntry.bytes_out = fmtBytes(ifEntry.pollOutOctets);
-												ifEntry.rate_out = bandwidth(
-														ifEntry.pollOutOctets,
-														30000);
-											});
+									ifTable.forEach(function(ifEntry) {
+										formatSourceInterfaces(ifEntry);
+									});
 									return ifTable;
 								}
 							},
@@ -245,22 +201,17 @@
 										"data" : null,
 										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-down\" aria-hidden=\"true\"></span>"
 									}, {
-
-										data : "ifDescr"
+										data : "interfaceInfo"
 									}, {
-										data : "action",
-										"orderable" : false,
-										"searchable" : false
+										data : "chargeInfo"
+									}, {
+										"data" : "chargeFlowInfo"
 									}, {
 										data : "actionTrace",
 										"orderable" : false,
 										"searchable" : false
 									}, {
-										data : "chargeInfo"
-									}, {
 										data : "status",
-										"orderable" : false,
-										"searchable" : false
 									}, {
 										data : "rate_in",
 										"searchable" : false
@@ -354,14 +305,13 @@
 					$("#chargingInfo").modal();
 				});
 
-	    $("#submitBtn").on("click", function() {
-	        updateChargingInfo(ip,dt,getSourceInfo);
-	      });
+		$("#submitBtn").on("click", function() {
+			updateChargingInfo(ip, dt, getSourceInfo);
+		});
 
-	      $("#removeBtn").on("click", function() {
-	        chargeOff(ip,dt,getSourceInfo);
-	      });
-		
+		$("#removeBtn").on("click", function() {
+			chargeOff(ip, dt, getSourceInfo);
+		});
 
 		$('#ifStatusUp').on(
 				'click',
@@ -395,7 +345,8 @@
 				function() {
 					getSourceInfo();
 					dt.ajax.url(
-							"/api/v1/sources/" + ip + "/interfaces?trace=on").load();
+							"/api/v1/sources/" + ip + "/interfaces?trace=on")
+							.load();
 				});
 
 		$('#ifNumber').on('click', function() {
@@ -465,7 +416,6 @@
 				}
 			});
 		}
-
 	</script>
 </body>
 </html>

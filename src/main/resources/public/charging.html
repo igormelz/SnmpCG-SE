@@ -74,10 +74,9 @@
 					<tr>
 						<td>Source</td>
 						<td>ifDescr</td>
-						<td>Charge</td>
-						<td>Trace</td>
-						<td>ChargeFlow</td>
 						<td>Tags</td>
+						<td>ChargeFlow</td>
+						<td>Trace</td>
 						<td>Status</td>
 						<td>Mbps In</td>
 						<td>Mbps Out</td>
@@ -126,9 +125,9 @@
 					<label>ChargeFlow:</label>
 					<div class="form-group">
 						<label class="radio-inline" title="outgoing port to CPE"><input
-							type="radio" name="chargeFlow" value="0">PE Downlink</label> <label
+							type="radio" name="chargeFlow" value="0">Downlink</label> <label
 							class="radio-inline" title="incoming port on CPE"><input
-							type="radio" name="chargeFlow" value="1">CPE Uplink</label>
+							type="radio" name="chargeFlow" value="1">Uplink</label>
 					</div>
 				</div>
 				<div class="modal-footer">
@@ -163,29 +162,24 @@
 			"columns" : [ {
 				"data" : "sourceName"
 			}, {
-				"data" : "ifDescr"
+				"data" : "interfaceInfo"
+
 			}, {
-				"data" : "chargeAction",
-				"searchable" : false,
-				"orderable" : false
+				"data" : "chargeInfo"
+			}, {
+				"data" : "chargeFlowInfo"
 			}, {
 				"data" : "traceAction",
 				"searchable" : false,
 				"orderable" : false
 			}, {
-				"data" : "chargeFlowInfo"
-			}, {
-				"data" : "chargeInfo"
-			}, {
 				"data" : "status"
 			}, {
 				"data" : "rate_in",
-				"searchable" : false,
-				"orderable" : false
+				"searchable" : false
 			}, {
 				"data" : "rate_out",
-				"searchable" : false,
-				"orderable" : false
+				"searchable" : false
 			}, {
 				"data" : "bytes_in",
 				"searchable" : false,
@@ -255,11 +249,11 @@
 		});
 
 		$("#submitBtn").on("click", function() {
-			updateChargingInfo($("#ipAddress").val(),dt,getChargingStats);
+			updateChargingInfo($("#ipAddress").val(), dt, getChargingStats);
 		});
 
 		$("#removeBtn").on("click", function() {
-			chargeOff($("#ipAddress").val(),dt,getChargingStats);
+			chargeOff($("#ipAddress").val(), dt, getChargingStats);
 		});
 
 		getChargingStats();

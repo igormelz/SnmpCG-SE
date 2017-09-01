@@ -373,6 +373,7 @@ public class SourceInventoryService {
                     }
                     sb.append(fieldSeparator);
                 }
+                sb.append(ifEntry.getIfAlias()).append(fieldSeparator);
                 // swap in out for egress port
                 if (ifEntry.getChargeFlow() == SnmpConstants.EGRESS) {
                     sb.append(ifEntry.getPollOutOctets()).append(fieldSeparator);
