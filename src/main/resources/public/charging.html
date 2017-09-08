@@ -76,12 +76,8 @@
 						<td>ifDescr</td>
 						<td>Tags</td>
 						<td>ChargeFlow</td>
-						<td>Trace</td>
 						<td>Status</td>
-						<td>Mbps In</td>
-						<td>Mbps Out</td>
-						<td>bytes In</td>
-						<td>bytes Out</td>
+						<td>Trace</td>
 					</tr>
 				</thead>
 				<tbody>
@@ -148,49 +144,41 @@
 	<script src="js/vendor/dataTables.bootstrap.min.js"></script>
 	<script src="js/script.js"></script>
 	<script>
-		var dt = $('#chargingTable').DataTable({
-			"ajax" : {
-				"url" : "/api/v1/interfaces?chargeable",
-				"dataSrc" : function(data) {
-					data.forEach(function(element) {
-						formatChargingInterface(element);
-					});
-					return data;
-				}
-			},
-			"lengthMenu" : [ [ 30, 50, 100, -1 ], [ 30, 50, 100, "All" ] ],
-			"columns" : [ {
-				"data" : "sourceName"
-			}, {
-				"data" : "interfaceInfo"
+		getChargingStats();
+		clusterInfo();
+		getPortConfig();
 
-			}, {
-				"data" : "chargeInfo"
-			}, {
-				"data" : "chargeFlowInfo"
-			}, {
-				"data" : "traceAction",
-				"searchable" : false,
-				"orderable" : false
-			}, {
-				"data" : "status"
-			}, {
-				"data" : "rate_in",
-				"searchable" : false
-			}, {
-				"data" : "rate_out",
-				"searchable" : false
-			}, {
-				"data" : "bytes_in",
-				"searchable" : false,
-				"orderable" : false
-			}, {
-				"data" : "bytes_out",
-				"searchable" : false,
-				"orderable" : false
-			} ],
-			"order" : [ [ 5, 'desc' ] ]
-		});
+		var dt = $('#chargingTable').DataTable(
+				{
+					"ajax" : {
+						"url" : "/api/v1/interfaces?chargeable",
+						"dataSrc" : function(data) {
+							data.forEach(function(element) {
+								formatChargingInterface(element);
+							});
+							return data;
+						}
+					},
+					"lengthMenu" : [ [ 10, 30, 50, 100, -1 ],
+							[ 10, 30, 50, 100, "All" ] ],
+					"columns" : [ {
+						"data" : "sourceName"
+					}, {
+						"data" : "interfaceInfo"
+
+					}, {
+						"data" : "chargeInfo"
+					}, {
+						"data" : "chargeFlowInfo"
+					}, {
+						"data" : "status"
+					}, {
+						"data" : "traceAction",
+						"searchable" : false,
+						"orderable" : false
+					} ],
+					"order" : [ [ 4, 'desc' ] ]
+				});
 
 		$('#chargingTable tbody').on(
 				'click',
@@ -255,10 +243,6 @@
 		$("#removeBtn").on("click", function() {
 			chargeOff($("#ipAddress").val(), dt, getChargingStats);
 		});
-
-		getChargingStats();
-		clusterInfo();
-		getPortConfig();
 	</script>
 </body>
 </html>

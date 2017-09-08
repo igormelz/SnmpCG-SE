@@ -88,7 +88,7 @@
 					<td></td>
 					<td>Source</td>
 					<td>Tags</td>
-					<td>Interfaces (Charge/Trace)</td>
+					<td>Charging Interfaces</td>
 					<td>last poll</td>
 					<td>status</td>
 					<td>response (ms)</td>
@@ -226,21 +226,10 @@
 	<script src="js/vendor/dataTables.bootstrap.min.js"></script>
 	<script src="js/script.js"></script>
 	<script>
-		var tagkeys = [];
-
-		function addField(name) {
-			var field = "<div class='form-group'><label>"
-					+ name
-					+ ":</label><input id='"
-      + name
-      + "' name='"
-      + name
-      + "' type='text' class='form-control' placeholder='field-value'></div>";
-			tagkeys.push(name);
-			$('#customFields').append(field);
-			$('#sourceCustomFields').append(field);
-			console.log("add field " + name);
-		}
+		//var tagkeys = [];
+    fillCounter();
+    getSourceConfig();
+    clusterInfo();
 
 		function updateSource() {
 			var source = $('#sourceIpAddress').val();
@@ -258,19 +247,24 @@
 			if (timeout != null && timeout != '') {
 				jsonData += ",\"timeout\":" + parseInt(timeout) + "";
 			}
-			jsonData += ",\"tags\":{";
-			tagkeys.forEach(function(item, idx, arr) {
-				var value = $("#updateSourceForm input[id='" + item + "']")
-						.val();
-				if (value != "") {
-					jsonData += "\"" + item + "\":\"" + addslashes(value)
-							+ "\"";
-					if (idx != tagkeys.length - 1) {
-						jsonData += ",";
-					}
-				}
-			});
-			jsonData += "}}";
+
+			var tags = [];
+			tagkeys
+					.forEach(function(item, idx, arr) {
+						var value = $(
+								"#updateSourceForm input[id='" + item + "']")
+								.val();
+						if (value != "") {
+							tags.push("\"" + item + "\":\"" + addslashes(value)
+									+ "\"");
+						}
+					});
+
+			if (tags.length > 0) {
+				jsonData += ",\"tags\":{" + tags.join(",") + "}";
+			}
+
+			jsonData += "}";
 			console.log("Update:" + jsonData);
 			$.ajax({
 				url : "/api/v1/sources/" + source,
@@ -308,19 +302,22 @@
 				if (timeout != null && timeout != '') {
 					jsonData += ",\"timeout\":" + parseInt(timeout) + "";
 				}
-				jsonData += ",\"tags\":{";
+
+				var tags = [];
 				tagkeys.forEach(function(item, idx, arr) {
 					var value = $("#newSourceForm input[id='" + item + "']")
 							.val();
 					if (value != "") {
-						jsonData += "\"" + item + "\":\"" + addslashes(value)
-								+ "\"";
-						if (idx != tagkeys.length - 1) {
-							jsonData += ",";
-						}
+						tags.push("\"" + item + "\":\"" + addslashes(value)
+								+ "\"");
 					}
 				});
-				jsonData += "}}";
+
+				if (tags.length > 0) {
+					jsonData += ",\"tags\":{" + tags.join(",") + "}";
+				}
+
+				jsonData += "}";
 
 				console.log("add source: " + jsonData);
 				$.ajax({
@@ -363,10 +360,9 @@
 							ajax : {
 								url : "/api/v1/sources",
 								dataSrc : function(sources) {
-									sources
-											.forEach(function(source) {
-												  formatSources(source);
-											});
+									sources.forEach(function(source) {
+										formatSources(source);
+									});
 									return sources;
 								}
 							},
@@ -382,8 +378,8 @@
 										data : "SourceInfo"
 									}, {
 										data : "sourceTags"
-					        }, {
-					          data : "counters"
+									}, {
+										data : "counters"
 									}, {
 										data : "pollTime"
 									}, {
@@ -393,10 +389,6 @@
 									} ],
 							"order" : [ [ 1, 'asc' ] ]
 						});
-
-		fillCounter();
-		getConfig();
-		clusterInfo();
 
 		$('#useSystemCommunity').on('click', function() {
 			enableDefaultValue(this.checked);

@@ -30,8 +30,13 @@ function showTagsInfo(tags) {
 	Object.keys(tags).forEach(
 			function(item) {
 				if (tags[item]) {
-					answer += "<span class='small text-info'>" + item + ":"
-							+ tags[item] + "</span></br>";
+					// skip vlanOidtag
+					if (configProp.vlanOidTag == null
+							|| configProp.vlanOidTag != item) {
+						answer += "<span class='small text-info'><code>" + item
+								+ ":</code>&nbsp;" + tags[item]
+								+ "</span></br>";
+					}
 				}
 			});
 	return answer;
@@ -43,6 +48,22 @@ var getChargingStats = function() {
 		success : function(stats) {
 			$("#chargeableCount").text(stats.chargeableCount);
 			$("#traceCount").text(stats.traceCount);
+		}
+	});
+}
+
+function getSourceInfo() {
+	$.ajax({
+		url : "/api/v1/sources/" + ip,
+		success : function(source) {
+			$("#updated").text(new Date(source.pollTime).toLocaleString());
+			$("#sysName").text("(" + source.sysName + ")");
+			$("#ifNumberCount").text(source.ifNumber);
+			$("#sysUptime").text(uptime(source.sysUptime));
+			$("#statusUpCount").text(source.statusUpCounter);
+			$("#statusDownCount").text(source.statusDownCounter);
+			$("#chargeableCount").text(source.chargeableCounter);
+			$("#traceCount").text(source.traceCounter);
 		}
 	});
 }
@@ -65,12 +86,38 @@ function fillCounter() {
 	});
 }
 
-function getConfig() {
+function addSourceField(name) {
+	var field = "<div class='form-group'><label>"
+			+ name
+			+ ":</label><input id='"
++ name
++ "' name='"
++ name
++ "' type='text' class='form-control' placeholder='field-value'></div>";
+	tagkeys.push(name);
+	$('#customFields').append(field);
+	$('#sourceCustomFields').append(field);
+	//console.log("add field " + name);
+}
+
+function getSourceConfig() {
 	$.ajax({
 		url : "/api/v1/sources/config",
 		success : function(conf) {
 			conf.sourceTagKeys.forEach(function(key) {
-				addField(key);
+				addSourceField(key);
+			});
+			configProp = conf;
+		}
+	});
+}
+
+function getPortConfig() {
+	$.ajax({
+		url : "/api/v1/sources/config",
+		success : function(conf) {
+			conf.interfaceTagKeys.forEach(function(key) {
+				addIfField(key);
 			});
 			configProp = conf;
 		}
@@ -190,7 +237,8 @@ function showSourceDetails(source) {
 	}
 	if (source.Status == 'SUCCESS' || source.sysObjectID != null) {
 		var answer = "<div class='table-responsive'><table class='table table-striped small'><tbody>";
-		answer += "<tr><th>sysName:</th><td>" + source.sysName + "</td>";
+		answer += "<tr><th width=\"10%\">sysName:</th><td>" + source.sysName
+				+ "</td>";
 		answer += "<tr><th>sysDescr:</th><td>" + source.sysDescr + "</td>";
 		answer += "<tr><th>sysObjectID:</th><td>" + source.sysObjectID
 				+ "</td>";
@@ -198,7 +246,19 @@ function showSourceDetails(source) {
 				+ "</td>";
 		answer += "<tr><th>ifNumber:</th><td>" + source.ifNumber + " ("
 				+ source.statusUpCounter + " is up)</td>";
-
+		if  (configProp.vlanOidTag != null) {
+			Object.keys(source.tags).forEach(
+					function(item) {
+						if (source.tags[item]) {
+							// skip vlanOidtag
+							if (configProp.vlanOidTag == item) {
+								answer += "<tr><th><code>" + item
+										+ ":</code></th><td>" + source.tags[item]
+										+ "</td>";
+							}
+						}
+					});
+		}
 		answer += "</tbody></table></div>";
 		return answer;
 	}
@@ -224,16 +284,16 @@ function showInterfaceStatus(s) {
 
 function showInterfaceDetails(i) {
 	var answer = "<div class='table-responsive'><table class='table table-striped small'><tbody>";
-	answer += "<tr><th width=\"20%\">Interface Index:</th><td>" + i.ifIndex
+	answer += "<tr><th width=\"10%\">Interface Index:</th><td>" + i.ifIndex +
+	"</td>";
+	answer += "</tr><tr><th width=\"10%\">Alias:</th><td>" + i.ifAlias
 			+ "</td>";
-	answer += "</tr><tr><th width=\"20%\">Alias:</th><td>" + i.ifAlias
-			+ "</td>";
-	answer += "</tr><tr><th width=\"20%\">Status (Adm/Op):</th><td>"
+	answer += "</tr><tr><th width=\"10%\">Status (Adm/Op):</th><td>"
 			+ fmtIfStatus(i.ifAdminStatus) + "/" + fmtIfStatus(i.ifOperStatus)
 			+ "</td>";
-	answer += "</tr><tr><th width=\"20%\">ifInOctets:</th><td>"
+	answer += "</tr><tr><th width=\"10%\">ifInOctets:</th><td>"
 			+ i.ifInOctets.value + " [" + i.ifInOctets.type + "]</td>";
-	answer += "</tr><tr><th width=\"20%\">ifOutOctets:</th><td>"
+	answer += "</tr><tr><th width=\"10%\">ifOutOctets:</th><td>"
 			+ i.ifOutOctets.value + " [" + i.ifOutOctets.type + "]</td>";
 	/*
 	 * if (i.tags) { Object.keys(i.tags).forEach( function(item) { if
@@ -254,19 +314,10 @@ function addIfField(name) {
 			+ name
 			+ "' type='text' class='form-control' placeholder='field-value'></div>";
 	$('#portCustomFields').append(field);
+	tagkeys.push(name);
 }
 
-function getPortConfig() {
-	$.ajax({
-		url : "/api/v1/sources/config",
-		success : function(conf) {
-			conf.interfaceTagKeys.forEach(function(key) {
-				addIfField(key);
-				tagkeys.push(key);
-			});
-		}
-	});
-}
+
 
 function chargeOff(ip, table, stats) {
 	var jsonData = JSON.stringify({
@@ -291,15 +342,29 @@ function updateChargingInfo(ip, table, stats) {
 	var jsonData = "{\"ifDescr\":\"" + $('#ifDescr').val() + "\"";
 	jsonData += ",\"chargeable\":true";
 	jsonData += ",\"chargeFlow\":" + $('input[name=chargeFlow]:checked').val();
-	jsonData += ",\"tags\":{";
+
+	var tags = [];
 	tagkeys.forEach(function(item, idx, arr) {
-		jsonData += "\"" + item + "\":\""
-				+ addslashes($("#portCustomFields #" + item).val()) + "\"";
-		if (idx != tagkeys.length - 1) {
-			jsonData += ",";
+		var value = $("#portCustomFields input[id='" + item + "']").val();
+		if (value != "") {
+			tags.push("\"" + item + "\":\"" + addslashes(value) + "\"");
 		}
 	});
-	jsonData += "}}";
+
+	if (tags.length > 0) {
+		jsonData += ",\"tags\":{" + tags.join(",") + "}";
+	}
+
+	// jsonData += ",\"tags\":{";
+	// tagkeys.forEach(function(item, idx, arr) {
+	// jsonData += "\"" + item + "\":\""
+	// + addslashes($("#portCustomFields #" + item).val()) + "\"";
+	// if (idx != tagkeys.length - 1) {
+	// jsonData += ",";
+	// }
+	// });
+
+	jsonData += "}";
 	console.log("try update:" + jsonData);
 	$.ajax({
 		url : "/api/v1/sources/" + ip + "/interfaces",
@@ -316,20 +381,25 @@ function updateChargingInfo(ip, table, stats) {
 
 function formatSources(source) {
 	source.statusInfo = showSourceStatus(source.Status);
-
-	source.SourceInfo = source.ipAddress;
-	source.SourceInfo += "<div class='pull-right'><a href='#' id='editSrc' title='Change settings' class='small'><span class=\"glyphicon glyphicon-pencil\" aria-hidden=\"true\"></span></a>";
-	source.SourceInfo += "&nbsp;<a href='#' id='delSrc' title='Remove source' class='small text-danger'><span class=\"glyphicon glyphicon-trash\" aria-hidden=\"true\"></span></a></div>";
+	
+	source.SourceInfo = "<a title=\"click to view interfaces\" href=\"view.html?ip="
+		+ source.ipAddress
+		+ "\"><span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a>&nbsp;";
+	source.SourceInfo += source.ipAddress;
+	source.SourceInfo += "<div class='pull-right'>";
+	source.SourceInfo += "&nbsp;<a href='#' id='editSrc' title='Change settings' class='small'><span class=\"glyphicon glyphicon-pencil\" aria-hidden=\"true\"></span></a>";
+	source.SourceInfo += "&nbsp;<a href='#' id='delSrc' title='Remove source' class='small text-danger'><span class=\"glyphicon glyphicon-trash\" aria-hidden=\"true\"></span></a>";
+	source.SourceInfo += "</div>";
 	// source.SourceInfo += "</div>";
-	source.SourceInfo += ((source.sysName) ? "<br><small>(" + source.sysName
-			+ ")</small>" : "");
+	// source.SourceInfo += ((source.sysName) ? "<br><small>(" + source.sysName+
+	// ")</small>" : "");
 
 	source.sourceTags = showTagsInfo(source.tags);
 
-	source.counters = "<a title=\"click to view interfaces\" href=\"view.html?ip="
-			+ source.ipAddress + "\">";
-	source.counters += "<span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a>&nbsp;";
-	source.counters += source.chargeableCounter + "/" + source.traceCounter;
+	// source.counters = "<a title=\"click to view interfaces\"
+	// href=\"view.html?ip="+ source.ipAddress + "\"><span class=\"glyphicon
+	// glyphicon-list\" aria-hidden=\"true\"></span></a>";
+	source.counters = source.chargeableCounter;// + "/" + source.traceCounter;
 
 	if (source.pollTime == 0) {
 		source.pollTime = "none";
@@ -342,19 +412,21 @@ function formatSourceInterfaces(ifEntry) {
 	ifEntry.chargeInfo = showTagsInfo(ifEntry.tags);
 	ifEntry.actionTrace = "";
 	ifEntry.action = "";
+	ifEntry.chargeFlowInfo = "";
 
-	ifEntry.interfaceInfo = ifEntry.ifDescr;
+	ifEntry.interfaceInfo = ifEntry.ifDescr; 
 	ifEntry.interfaceInfo += "<div class='pull-right'>";
 	if (ifEntry.chargeable) {
 		ifEntry.interfaceInfo += "<a href='#' id='editChargingInfo' class=\"btn btn-primary btn-xs\" title='Edit ChargingInfo'>";
-		ifEntry.interfaceInfo += "<span class=\"glyphicon glyphicon-stats\"></span></a></div>";
+		ifEntry.interfaceInfo += "<span class=\"glyphicon glyphicon-stats\"></span></a>";
 	} else {
 		ifEntry.interfaceInfo += "<a title=\"add to charge\" class=\"btn btn-default btn-xs\" id=\"addChargeInfo\">";
-		ifEntry.interfaceInfo += "<span class=\"glyphicon glyphicon-stats\" aria-hidden=\"true\"></span></a></div>";
+		ifEntry.interfaceInfo += "<span class=\"glyphicon glyphicon-stats\" aria-hidden=\"true\"></span></a>";
 	}
-	if (ifEntry.ifAlias != "") {
-		ifEntry.interfaceInfo += "<br><small>(" + ifEntry.ifAlias + ")</small>";
-	}
+	ifEntry.interfaceInfo += "</div>";
+	// if (ifEntry.ifAlias != "") {
+	// ifEntry.interfaceInfo += "<br><small>(" + ifEntry.ifAlias + ")</small>";
+	// }
 
 	if (ifEntry.chargeable) {
 		if (ifEntry.trace) {
@@ -368,7 +440,7 @@ function formatSourceInterfaces(ifEntry) {
 		}
 		ifEntry.chargeFlowInfo = showChargeFlow(ifEntry.chargeFlow);
 	}
-	
+
 	ifEntry.status = showInterfaceStatus(ifEntry.up);
 
 	ifEntry.circuit = ifEntry.ifDescr
@@ -382,27 +454,29 @@ function formatSourceInterfaces(ifEntry) {
 // format charging interfaces
 function formatChargingInterface(ifEntry) {
 
-	ifEntry.sourceName = ifEntry.source.ipAddress;
-	ifEntry.sourceName += "<div class='pull-right'><a title=\"click to view interfaces\" href=\"view.html?ip="
-			+ ifEntry.source.ipAddress + "\">";
-	ifEntry.sourceName += "<span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a></div>";
-	ifEntry.sourceName += "<br>" + showTagsInfo(ifEntry.source.tags);
+	ifEntry.sourceName = "<a title=\"click to view interfaces\" href=\"view.html?ip="
+		+ ifEntry.source.ipAddress + "\">";
+	ifEntry.sourceName += "<span class=\"glyphicon glyphicon-list\" aria-hidden=\"true\"></span></a>&nbsp;";
+	ifEntry.sourceName += ifEntry.source.ipAddress;
+	
+	// ifEntry.sourceName += "<br>" + showTagsInfo(ifEntry.source.tags);
 
 	ifEntry.interfaceInfo = ifEntry.ifDescr;
 	ifEntry.interfaceInfo += "<div class='pull-right'>";
 	ifEntry.interfaceInfo += "<a href='#' id='editChargingInfo' class=\"btn btn-primary btn-xs\" title='Edit ChargingInfo'>";
 	ifEntry.interfaceInfo += "<span class=\"glyphicon glyphicon-stats\"></span></a></div>";
-	if (ifEntry.ifAlias != "") {
-		ifEntry.interfaceInfo += "<br><small>(" + ifEntry.ifAlias + ")</small>";
-	}
-	
-	ifEntry.sourceInfo = showTagsInfo(ifEntry.source.tags);
+	// if (ifEntry.ifAlias != "") {
+	// ifEntry.interfaceInfo += "<br><small>(" + ifEntry.ifAlias + ")</small>";
+	// }
+
+	// ifEntry.sourceInfo = showTagsInfo(ifEntry.source.tags);
 
 	ifEntry.status = showInterfaceStatus(ifEntry.up);
 
 	ifEntry.chargeFlowInfo = showChargeFlow(ifEntry.chargeFlow);
 
-	ifEntry.chargeInfo = showTagsInfo(ifEntry.tags);
+	ifEntry.chargeInfo = showTagsInfo(ifEntry.tags)
+			+ showTagsInfo(ifEntry.source.tags);
 
 	ifEntry.chargeAction = "<a href='#' id='editChargingInfo' class=\"btn btn-primary btn-xs\" title='Edit ChargingInfo'>";
 	ifEntry.chargeAction += "<span class=\"glyphicon glyphicon-stats\"></span></a>&nbsp;";

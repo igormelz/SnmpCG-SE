@@ -6,9 +6,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -36,7 +38,7 @@ import com.hazelcast.core.IMap;
 public class SourceInventoryService {
 
     private static final Logger log = LoggerFactory.getLogger(SourceInventoryService.class);
-
+    
     @Value("${snmpcg.snmpCommunity:public}")
     private String community;
 
@@ -52,12 +54,15 @@ public class SourceInventoryService {
     @Value("${snmpcg.cdrFieldSeparator:;}")
     private String fieldSeparator;
 
-    @Value("${snmpcg.tagkeys.source:RouterId}")
+    @Value("${snmpcg.sourceTags:router}")
     private String sourceTagKeysProperties;
 
-    @Value("${snmpcg.tagkeys.interface:CircuitId}")
+    @Value("${snmpcg.interfaceTags:circuit}")
     private String interfaceTagKeysProperties;
 
+    @Value("${snmpcg.sourceVlanOidTag:vlan_oid}")
+    private String vlanOidTag;
+    
     @Autowired
     private ConcurrentMap<String, SnmpSource> sources;
 
@@ -77,6 +82,7 @@ public class SourceInventoryService {
         this.gaugeSources = gaugeService;
     }
 
+    @SuppressWarnings("unchecked")
     @PostConstruct
     public void initConfig() {
         config.putIfAbsent("sourceTagKeys", new LinkedHashSet<String>(Arrays.asList(sourceTagKeysProperties.split(","))));
@@ -84,6 +90,14 @@ public class SourceInventoryService {
         config.putIfAbsent("snmpCommunity", community);
         config.putIfAbsent("snmpRetries", retries);
         config.putIfAbsent("snmpTimeout", timeout);
+        
+        // set vlan OID tag
+        for (String skey : (LinkedHashSet<String>)config.get("sourceTagKeys")) {
+            if (skey.equalsIgnoreCase(vlanOidTag)) {
+                config.putIfAbsent("vlanOidTag", vlanOidTag);
+            }
+        }
+        
         if (!config.containsKey("cdrTimeStampFormat")) {
             config.put("cdrTimeStampFormat", cdrTimeStampFormat);
             timeStampFormat = new SimpleDateFormat(cdrTimeStampFormat);
@@ -95,6 +109,7 @@ public class SourceInventoryService {
         } else {
             fieldSeparator = config.get("cdrFieldSeparator").toString();
         }
+        log.info("init config");
     }
 
     @Handler
@@ -177,6 +192,7 @@ public class SourceInventoryService {
         exchange.getIn().setBody(config);
     }
 
+    @SuppressWarnings("unchecked")
     @Handler
     public void getSources(Exchange exchange) {
 
@@ -193,6 +209,22 @@ public class SourceInventoryService {
             return;
         }
 
+        // process tags
+        if (exchange.getIn().getHeader("tags") != null) {
+            Map<String, Set<String>> answer = new HashMap<String, Set<String>>();
+            sources.values().stream().forEach(entry -> {
+                for (String k : (LinkedHashSet<String>)config.get("sourceTagKeys")) {
+                    if (entry.getTags().containsKey(k)) {
+                        answer.putIfAbsent(k, new HashSet<String>());
+                        answer.get(k).add(entry.getTags().get(k));
+                    }
+                }
+            });
+            
+            exchange.getIn().setBody(answer);
+            return;
+        }
+        
         // return list sources
         exchange.getIn().setBody(sources.values().stream().map(mapSource).collect(Collectors.toList()));
     }
@@ -360,7 +392,12 @@ public class SourceInventoryService {
         getReadySources().stream().forEach(source -> {
             source.getInterfaces().stream().filter(SnmpInterface::isChargeable).forEach(ifEntry -> {
                 sb.append(source.getIpAddress()).append(fieldSeparator);
+                sb.append(source.getSysName()).append(fieldSeparator);
                 for (String skey : (LinkedHashSet<String>)config.get("sourceTagKeys")) {
+                    //skip vlan_oid
+                    if (skey.equalsIgnoreCase(vlanOidTag)) {
+                        continue;
+                    }
                     if (source.getTags().containsKey(skey)) {
                         sb.append(source.getTags().get(skey).replace(fieldSeparator.charAt(0), '.'));
                     }
@@ -475,6 +512,7 @@ public class SourceInventoryService {
             if (updated) {
                 sources.put(sourceIpAddr, source);
                 exchange.getIn().setBody(Collections.singletonMap("Status", "success"));
+                log.info("source:{} updated",sourceIpAddr);
             }
         }
     }
@@ -559,6 +597,7 @@ public class SourceInventoryService {
             if (updated) {
                 exchange.getIn().setBody(Collections.singletonMap("Status", "success"));
                 sources.put(sourceIpAddr, source);
+                log.info("source:{} update interface",sourceIpAddr);
             }
         }
 
@@ -576,7 +615,6 @@ public class SourceInventoryService {
             msg.append(" not found");
         }
         exchange.getIn().setBody(Collections.singletonMap("Status", msg.toString()));
-
         log.info(msg.toString());
     }
 

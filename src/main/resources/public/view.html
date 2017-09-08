@@ -55,7 +55,17 @@
 			<label class="small">Last poll:</label> <span id="updated"
 				class="small"></span>
 			<ul class="nav nav-pills">
-				<li><a href="#" title="view ifup" class="text-info"
+				<li><a href="#" title="view all" class="text-muted"
+					id="ifNumber"> No filter <span id="ifNumberCount" class="badge"></span>
+				</a></li>
+				<!-- 
+				<li><a href="#" title="view trace" class="text-info"
+					id="ifTraced"> <span class="glyphicon glyphicon-filter"
+						aria-hidden="true"></span> Trace <span id="traceCount"
+						class="badge">0</span>
+				</a></li>
+				 -->
+				<li><a href="#" title="view ifup" class="text-success"
 					id="ifStatusUp"> <span class="glyphicon glyphicon-filter"
 						aria-hidden="true"></span> Up <span id="statusUpCount"
 						class="badge">0</span>
@@ -65,18 +75,10 @@
 						aria-hidden="true"></span> Down <span id="statusDownCount"
 						class="badge">0</span>
 				</a></li>
-				<li><a href="#" title="view chargeable" class="text-success"
+				<li><a href="#" title="view chargeable" class="text-primary"
 					id="ifChargeable"> <span class="glyphicon glyphicon-filter"
 						aria-hidden="true"></span> Chargeable <span id="chargeableCount"
 						class="badge">0</span>
-				</a></li>
-				<li><a href="#" title="view trace" class="text-info"
-					id="ifTraced"> <span class="glyphicon glyphicon-filter"
-						aria-hidden="true"></span> Trace <span id="traceCount"
-						class="badge">0</span>
-				</a></li>
-				<li><a href="#" title="view all" class="text-muted"
-					id="ifNumber"> No filter <span id="ifNumberCount" class="badge"></span>
 				</a></li>
 			</ul>
 		</div>
@@ -85,10 +87,10 @@
 			<thead>
 				<tr>
 					<td></td>
+					<td>#</td>
 					<td>ifDescr</td>
 					<td>Tags</td>
 					<td>ChargeFlow</td>
-					<td>Trace</td>
 					<td>Status</td>
 					<td>Mbps In</td>
 					<td>Mbps Out</td>
@@ -154,36 +156,19 @@
 	<script src="js/vendor/dataTables.bootstrap.min.js"></script>
 	<script src="js/script.js"></script>
 	<script>
-		var getSourceInfo = function() {
-			$.ajax({
-				url : "/api/v1/sources/" + ip,
-				success : function(source) {
-					$("#updated").text(
-							new Date(source.pollTime).toLocaleString());
-					$("#sysName").text("(" + source.sysName + ")");
-					$("#ifNumberCount").text(source.ifNumber);
-					$("#sysUptime").text(uptime(source.sysUptime));
-					$("#statusUpCount").text(source.statusUpCounter);
-					$("#statusDownCount").text(source.statusDownCounter);
-					$("#chargeableCount").text(source.chargeableCounter);
-					$("#traceCount").text(source.traceCounter);
-				}
-			});
-		}
-
 		var ip = getUrlParameter("ip");
 		$("#ipaddr").text(ip);
 
 		getSourceInfo();
-		clusterInfo();
 		getPortConfig();
+		clusterInfo();
+		//getPortConfig();
 
 		var dt = $('#ifTable')
 				.DataTable(
 						{
 							ajax : {
-								url : "/api/v1/sources/" + ip
-										+ "/interfaces?status=up",
+								url : "/api/v1/sources/" + ip + "/interfaces",
 								dataSrc : function(ifTable) {
 									ifTable.forEach(function(ifEntry) {
 										formatSourceInterfaces(ifEntry);
@@ -201,15 +186,17 @@
 										"data" : null,
 										"defaultContent" : "<span title=\"click to view details\" class=\"glyphicon glyphicon-chevron-down\" aria-hidden=\"true\"></span>"
 									}, {
+										data : "ifIndex"
+									}, {
 										data : "interfaceInfo"
 									}, {
 										data : "chargeInfo"
 									}, {
-										"data" : "chargeFlowInfo"
-									}, {
-										data : "actionTrace",
-										"orderable" : false,
-										"searchable" : false
+										data : "chargeFlowInfo"
+									//}, {
+									//	data : "actionTrace",
+									//	"orderable" : false,
+									//	"searchable" : false
 									}, {
 										data : "status",
 									}, {

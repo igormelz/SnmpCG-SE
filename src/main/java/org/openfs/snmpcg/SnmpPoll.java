@@ -51,8 +51,14 @@ public class SnmpPoll {
     private final static OID STATUS_OIDS[] = new OID[] {sysUpTimeOID, sysDescrOID, sysObjectIDOID, sysNameOID, sysLocationOID, ifNumberOID, ifDescrOID, ifAdminStatusOID,
                                                         ifOperStatusOID, ifNameOID, ifAliasOID};
     
-    @Value("#{'${snmpcg.snmpVlanOids}'.split(';')}")
+    @Value("#{'${snmpcg.snmpVlanOids}'.split('\\|')}")
     private List<String> snmpVlanOids = new ArrayList<String>();
+    
+    @Value("${snmpcg.sourceVlanOidTag:vlan_oid}")
+    private String vlanOidTag;
+    
+    @Value("${snmpcg.interfaceVlanTag:vlan}")
+    private String vlanTag;
     
     private CounterService counterService;
     private Snmp snmp;
@@ -155,8 +161,8 @@ public class SnmpPoll {
 
         // validate vlanOID
         OID vlanOID = null;
-        if (!source.getTags().isEmpty() && source.getTags().get("VLAN_OID") != null && !source.getTags().get("VLAN_OID").isEmpty()) {
-            vlanOID = new OID(source.getTags().get("VLAN_OID"));
+        if (!source.getTags().isEmpty() && source.getTags().get(vlanOidTag) != null && !source.getTags().get(vlanOidTag).isEmpty()) {
+            vlanOID = new OID(source.getTags().get(vlanOidTag));
         }
 
         // get ifTable
@@ -196,23 +202,25 @@ public class SnmpPoll {
             String ifdescr = vb[1].getVariable().toString();
             SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
 
+            // update status, alias
             updateIfEntry(ifEntry, event, 6);
-
+            
             // update vlanID
             if (vb.length > COUNTER_OIDS.length && vb[COUNTER_OIDS.length] != null) {
                 String vlanid = vb[COUNTER_OIDS.length].getVariable().toString();
                 // auto charge up iface for first time
-                if (!ifEntry.getTags().containsKey("VLAN_ID")) {
+                if (!ifEntry.getTags().containsKey(vlanTag)) {
                     if (ifEntry.isUp()) {
                         ifEntry.setChargeable(true);
                         log.info("source: {} interface ifdescr: {} set autocharge for vlan: {}", source.getIpAddress(), ifdescr, vlanid);
                     }
-                } else if (!vlanid.equals(ifEntry.getTags().get("VLAN_ID"))) {
-                    log.info("source: {} interface ifdescr: {} change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get("VLAN_ID"), vlanid);
+                } else if (!vlanid.equals(ifEntry.getTags().get(vlanTag))) {
+                    ifEntry.setChargeable(true);
+                    log.info("source: {} interface ifdescr: {} set autocharge for change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
                 }
-                ifEntry.getTags().put("VLAN_ID", vlanid);
+                ifEntry.getTags().put(vlanTag, vlanid);
             }
-
+            
             // get ifInOctets, ifOutOctets
             SnmpCounter bytes_in = getCounterValue(vb[2], vb[3]);
             SnmpCounter bytes_out = getCounterValue(vb[4], vb[5]);
@@ -245,13 +253,13 @@ public class SnmpPoll {
         // process not existing interfaces
         if (toremove != null && !toremove.isEmpty()) {
             for (String ifdescr : toremove) {
-                log.warn("source: {} not found in response ifdescr: {}", source.getIpAddress(), ifdescr);
-                counterService.increment("counter.snmp.logWarn");
                 if (source.getSnmpInterface(ifdescr).isMarked()) {
                     source.removeSnmpInterace(ifdescr);
                     log.info("source: {} removed interface ifdescr: {}", source.getIpAddress(), ifdescr);
                 } else {
                     source.getSnmpInterface(ifdescr).setMarked(true);
+                    log.warn("source: {} not found in response ifdescr: {}", source.getIpAddress(), ifdescr);
+                    counterService.increment("counter.snmp.logWarn");
                 }
             }
         }
@@ -383,13 +391,13 @@ public class SnmpPoll {
     private void updateVlanOid(SnmpSource source) {
         final String enterprise = "1.3.6.1.4.1";
 
-        if (source.getTags().get("VLAN_OID") == null) {
+        if (source.getTags().get(vlanOidTag) == null) {
             int pos0 = source.getSysObjectID().indexOf(enterprise);
             char vendorId = source.getSysObjectID().substring(pos0 + enterprise.length() + 1).charAt(0);
             for (String value : snmpVlanOids) {
                 int pos1 = value.indexOf(enterprise);
                 if (vendorId == value.substring(pos1 + enterprise.length() + 1).charAt(0)) {
-                    source.getTags().put("VLAN_OID", value);
+                    source.getTags().put(vlanOidTag, value);
                     log.info("source: {} set vlan_oid: {}", source.getIpAddress(),value);
                 }
             }
