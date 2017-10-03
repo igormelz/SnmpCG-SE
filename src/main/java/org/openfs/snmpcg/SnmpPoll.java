@@ -212,11 +212,19 @@ public class SnmpPoll {
                 if (!ifEntry.getTags().containsKey(vlanTag)) {
                     if (ifEntry.isUp()) {
                         ifEntry.setChargeable(true);
-                        log.info("source: {} interface ifdescr: {} set autocharge for vlan: {}", source.getIpAddress(), ifdescr, vlanid);
+                        log.info("source: {} interface ifdescr: {} set chargeable on autodiscover vlan: {}", source.getIpAddress(), ifdescr, vlanid);
                     }
                 } else if (!vlanid.equals(ifEntry.getTags().get(vlanTag))) {
-                    ifEntry.setChargeable(true);
-                    log.info("source: {} interface ifdescr: {} set autocharge for change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
+                    if (!ifEntry.isChargeable()) {
+                        ifEntry.setChargeable(true);
+                        log.info("source: {} interface ifdescr: {} set chargeable on change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
+                    } else if (ifEntry.getIfAdminStatus() == 1) {
+                        // set chargeable if AdminStatus is UP
+                        ifEntry.setChargeable(false);
+                        log.info("source: {} interface ifdescr: {} clear chargeable on change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
+                    } else {
+                        log.info("source: {} interface ifdescr: {} change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
+                    }
                 }
                 ifEntry.getTags().put(vlanTag, vlanid);
             }
