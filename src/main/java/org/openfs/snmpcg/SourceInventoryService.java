@@ -274,7 +274,7 @@ public class SourceInventoryService {
             Map<String, Long> answer = new HashMap<String, Long>(3);
             answer.put("traceCount", ifList.stream().filter(e -> (Boolean)e.get("trace")).count());
             answer.put("chargeableCount", ifList.stream().filter(e -> (Boolean)e.get("chargeable")).count());
-            answer.put("ifnumberCount", (long)ifList.size());
+            answer.put("pollCount", (long)ifList.size());
             exchange.getIn().setBody(answer);
             return;
         }
@@ -300,6 +300,7 @@ public class SourceInventoryService {
             iface.put("chargeable", e.isChargeable());
             iface.put("trace", e.isTrace());
             iface.put("up", e.isUp());
+            iface.put("portStatus", e.getIfAdminStatus()+e.getIfOperStatus());
             iface.put("pollInOctets", e.getPollInOctets());
             iface.put("pollOutOctets", e.getPollOutOctets());
             iface.put("tags", e.getTags());

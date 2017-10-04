@@ -274,18 +274,12 @@ function showChargeFlow(t) {
 			: "<lable class='label label-info'><span class='glyphicon glyphicon-cloud-upload' title='Upload on CPE (Ingress)'></span> Uplink</label>";
 }
 
-function showInterfaceStatus(s) {
-	if (s) {
-		return "<lable class='label label-success'><span class=\"glyphicon glyphicon-ok-sign\"></span> Up</label>";
-	} 
-	return "<label class='label label-warning'><span class='glyphicon glyphicon-exclamation-sign' title='down'></span> Down</label>";
-}
 
-function showPortStatus(p) {
-	if (p.up) {
+function showPortStatus(s) {
+	if (s == 2) {
 		return "<lable class='label label-success'><span class=\"glyphicon glyphicon-ok-sign\"></span> Up</label>";
 	}
-	if (p.ifAdminStatus > 1) {
+	if (s == 4) {
 		return "<label class='label label-default'><span class='glyphicon glyphicon-exclamation-sign' title='down'></span> Disable</label>";
 	}
 	return "<label class='label label-warning'><span class='glyphicon glyphicon-exclamation-sign' title='down'></span> Down</label>";
@@ -450,7 +444,7 @@ function formatSourceInterfaces(ifEntry) {
 		ifEntry.chargeFlowInfo = showChargeFlow(ifEntry.chargeFlow);
 	}
 
-	ifEntry.status = showPortStatus(ifEntry); //showInterfaceStatus(ifEntry.up);
+	ifEntry.status = showPortStatus(ifEntry.ifAdminStatus + ifEntry.ifOperStatus); //showInterfaceStatus(ifEntry.up);
 
 	ifEntry.circuit = ifEntry.ifDescr
 
@@ -480,7 +474,7 @@ function formatChargingInterface(ifEntry) {
 
 	// ifEntry.sourceInfo = showTagsInfo(ifEntry.source.tags);
 
-	ifEntry.status = showPortStatus(ifEntry); //showInterfaceStatus(ifEntry.up);
+	ifEntry.status = showPortStatus(ifEntry.portStatus); 
 
 	ifEntry.chargeFlowInfo = showChargeFlow(ifEntry.chargeFlow);
 
