@@ -300,7 +300,7 @@ public class SourceInventoryService {
             iface.put("chargeable", e.isChargeable());
             iface.put("trace", e.isTrace());
             iface.put("up", e.isUp());
-            iface.put("portStatus", e.getIfAdminStatus()+e.getIfOperStatus());
+            iface.put("portStatus", e.getPortStatus());
             iface.put("pollInOctets", e.getPollInOctets());
             iface.put("pollOutOctets", e.getPollOutOctets());
             iface.put("tags", e.getTags());

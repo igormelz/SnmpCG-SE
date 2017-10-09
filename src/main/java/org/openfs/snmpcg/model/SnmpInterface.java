@@ -186,4 +186,8 @@ public final class SnmpInterface implements Serializable {
     public void setChargeFlow(int chargeFlow) {
         this.chargeFlow = chargeFlow;
     }
+    
+    public int getPortStatus() {
+        return ifAdminStatus + ifOperStatus;
+    }
 }
