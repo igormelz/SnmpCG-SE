@@ -421,7 +421,8 @@ public class SourceInventoryService {
                     sb.append(ifEntry.getPollOutOctets()).append(fieldSeparator);
                 }
                 sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
-                sb.append(source.getPollDuration()).append(fieldSeparator);
+                //sb.append(source.getPollDuration()).append(fieldSeparator);
+                sb.append((ifEntry.getPollDuration()==0) ? source.getPollDuration() : ifEntry.getPollDuration()).append(fieldSeparator);
                 sb.append((ifEntry.isUp()) ? 1 : 0);
                 sb.append(System.lineSeparator());
             });

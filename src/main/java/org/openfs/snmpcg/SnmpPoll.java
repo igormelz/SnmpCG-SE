@@ -143,6 +143,8 @@ public class SnmpPoll {
             // update ifName,ifAlias, ...
             updateIfEntry(ifEntry, event, 7);
 
+            //update sysuptime
+            ifEntry.setSysUptime(vbs[0].getVariable().toLong());
         });
         log.info("source: {} update status: SUCCESS, uptime: {}, ifNumber: {}", source.getIpAddress(), uptime, events.size() - 1);
     }
@@ -245,6 +247,9 @@ public class SnmpPoll {
 
             // add to processed list
             processedIF.add(ifdescr);
+            
+            // update uptime 
+            ifEntry.setSysUptime(sysUptime);
         });
 
         // reset skipDelta

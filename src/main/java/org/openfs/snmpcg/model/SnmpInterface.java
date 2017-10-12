@@ -22,6 +22,8 @@ public final class SnmpInterface implements Serializable {
     private final Map<String, String> tags = new HashMap<String, String>();
     // ingress = 1 ; egress = 0
     private int chargeFlow = SnmpConstants.EGRESS;
+    private long sysUptime;
+    private long pollDuration;
 
     public SnmpInterface(String ifDescr) {
         this.ifDescr = ifDescr;
@@ -43,6 +45,8 @@ public final class SnmpInterface implements Serializable {
         ifInOctets.reset();
         ifOutOctets.reset();
         resetPollCounters();
+        sysUptime = 0l;
+        pollDuration = 0l;
     }
 
     public void resetPollCounters() {
@@ -189,5 +193,24 @@ public final class SnmpInterface implements Serializable {
     
     public int getPortStatus() {
         return ifAdminStatus + ifOperStatus;
+    }
+
+    public long getPollDuration() {
+        return pollDuration;
+    }
+
+    public void setPollDuration(long pollDuration) {
+        this.pollDuration = pollDuration;
+    }
+
+    public long getSysUptime() {
+        return sysUptime;
+    }
+
+    public void setSysUptime(long sysUptime) {
+        if (this.sysUptime != 0l) {
+            setPollDuration(sysUptime - this.sysUptime);
+        }
+        this.sysUptime = sysUptime;
     }
 }
