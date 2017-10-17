@@ -365,6 +365,7 @@ public class SourceInventoryService {
             source.getInterfaces().stream().filter(SnmpInterface::isTrace).forEach(ifEntry -> {
                 sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
                 sb.append(source.getIpAddress()).append(fieldSeparator);
+                sb.append(source.getSysUptime()).append(fieldSeparator);
                 sb.append(ifEntry.getIfIndex()).append(fieldSeparator);
                 sb.append(ifEntry.getIfDescr()).append(fieldSeparator);
                 sb.append(ifEntry.getIfName()).append(fieldSeparator);
@@ -373,7 +374,7 @@ public class SourceInventoryService {
                 sb.append(ifEntry.getIfOperStatus()).append(fieldSeparator);
                 sb.append(ifEntry.getIfInOctets()).append(fieldSeparator);
                 sb.append(ifEntry.getIfOutOctets()).append(fieldSeparator);
-                sb.append(source.getSysUptime()).append(fieldSeparator);
+                sb.append(ifEntry.getSysUptime()).append(fieldSeparator);
                 sb.append(System.lineSeparator());
             });
         });
