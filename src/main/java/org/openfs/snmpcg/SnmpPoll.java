@@ -50,16 +50,16 @@ public class SnmpPoll {
                                                          ifOperStatusOID, ifNameOID, ifAliasOID};
     private final static OID STATUS_OIDS[] = new OID[] {sysUpTimeOID, sysDescrOID, sysObjectIDOID, sysNameOID, sysLocationOID, ifNumberOID, ifDescrOID, ifAdminStatusOID,
                                                         ifOperStatusOID, ifNameOID, ifAliasOID};
-    
+
     @Value("#{'${snmpcg.snmpVlanOids}'.split('\\|')}")
     private List<String> snmpVlanOids = new ArrayList<String>();
-    
+
     @Value("${snmpcg.sourceVlanOidTag:vlan_oid}")
     private String vlanOidTag;
-    
+
     @Value("${snmpcg.interfaceVlanTag:vlan}")
     private String vlanTag;
-    
+
     private CounterService counterService;
     private Snmp snmp;
 
@@ -98,7 +98,7 @@ public class SnmpPoll {
 
         // process sysUpTime
         String uptime = vbs[0].getVariable().toString();
-        validateSkipDelta(source, vbs[0].getVariable().toLong());
+        boolean isSkip = validateSkipDelta(source, vbs[0].getVariable().toLong());
         source.setSysUptime(vbs[0].getVariable().toLong());
 
         // update system info
@@ -143,8 +143,10 @@ public class SnmpPoll {
             // update ifName,ifAlias, ...
             updateIfEntry(ifEntry, event, 7);
 
-            //update sysuptime
-            ifEntry.setSysUptime(vbs[0].getVariable().toLong());
+            // update sysuptime for first time 
+            if (!isSkip && ifEntry.getSysUptime() == 0l) {
+                ifEntry.setSysUptime(vbs[0].getVariable().toLong());
+            }
         });
         log.info("source: {} update status: SUCCESS, uptime: {}, ifNumber: {}", source.getIpAddress(), uptime, events.size() - 1);
     }
@@ -190,67 +192,73 @@ public class SnmpPoll {
         List<String> processedIF = new ArrayList<String>(events.size());
 
         // process ifEntry
-        events.subList(1, events.size()).stream().filter(event -> event != null && !event.isError()).forEach(event -> {
-            VariableBinding vb[] = event.getColumns();
+        events
+            .subList(1, events.size())
+            .stream()
+            .filter(event -> event != null && !event.isError())
+            .forEach(event -> {
+                VariableBinding vb[] = event.getColumns();
 
-            // validate ifDescr
-            if (vb == null || vb.length < 1 || vb[1] == null) {
-                log.warn("source: {} no ifDescr for index: {}", source.getIpAddress(), event.getIndex().get(0));
-                counterService.increment("counter.snmp.logWarn");
-                return;
-            }
-
-            // get ifEntry
-            String ifdescr = vb[1].getVariable().toString();
-            SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
-
-            // update status, alias
-            updateIfEntry(ifEntry, event, 6);
-            
-            // update vlanID
-            if (vb.length > COUNTER_OIDS.length && vb[COUNTER_OIDS.length] != null) {
-                String vlanid = vb[COUNTER_OIDS.length].getVariable().toString();
-                // auto charge up iface for first time
-                if (!ifEntry.getTags().containsKey(vlanTag)) {
-                    if (ifEntry.isUp()) {
-                        ifEntry.setChargeable(true);
-                        log.info("source: {} interface ifdescr: {} set chargeable on autodiscover vlan: {}", source.getIpAddress(), ifdescr, vlanid);
-                    }
-                } else if (!vlanid.equals(ifEntry.getTags().get(vlanTag))) {
-                    if (!ifEntry.isChargeable()) {
-                        ifEntry.setChargeable(true);
-                        log.info("source: {} interface ifdescr: {} set chargeable on change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
-                    } else if (ifEntry.getIfAdminStatus() == 1) {
-                        // set chargeable if AdminStatus is UP
-                        ifEntry.setChargeable(false);
-                        log.info("source: {} interface ifdescr: {} clear chargeable on change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
-                    } else {
-                        log.info("source: {} interface ifdescr: {} change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
-                    }
+                // validate ifDescr
+                if (vb == null || vb.length < 1 || vb[1] == null) {
+                    log.warn("source: {} no ifDescr for index: {}", source.getIpAddress(), event.getIndex().get(0));
+                    counterService.increment("counter.snmp.logWarn");
+                    return;
                 }
-                ifEntry.getTags().put(vlanTag, vlanid);
-            }
-            
-            // get ifInOctets, ifOutOctets
-            SnmpCounter bytes_in = getCounterValue(vb[2], vb[3]);
-            SnmpCounter bytes_out = getCounterValue(vb[4], vb[5]);
 
-            // calculate delta counters
-            if (!source.isSkipDelta() && ifEntry.isUp()) {
-                ifEntry.setPollInOctets(calcDeltaCounter(source.getIpAddress(), ifdescr, bytes_in, ifEntry.getIfInOctets()));
-                ifEntry.setPollOutOctets(calcDeltaCounter(source.getIpAddress(), ifdescr, bytes_out, ifEntry.getIfOutOctets()));
-            }
+                // get ifEntry
+                String ifdescr = vb[1].getVariable().toString();
+                SnmpInterface ifEntry = source.getSnmpInterface(ifdescr);
 
-            // save counter values
-            ifEntry.setIfInOctets(bytes_in);
-            ifEntry.setIfOutOctets(bytes_out);
+                // update status, alias
+                updateIfEntry(ifEntry, event, 6);
 
-            // add to processed list
-            processedIF.add(ifdescr);
-            
-            // update uptime 
-            ifEntry.setSysUptime(sysUptime);
-        });
+                // update vlanID
+                if (vb.length > COUNTER_OIDS.length && vb[COUNTER_OIDS.length] != null) {
+                    String vlanid = vb[COUNTER_OIDS.length].getVariable().toString();
+                    // auto charge up iface for first time
+                    if (!ifEntry.getTags().containsKey(vlanTag)) {
+                        if (ifEntry.isUp()) {
+                            ifEntry.setChargeable(true);
+                            log.info("source: {} interface ifdescr: {} set chargeable on autodiscover vlan: {}", source.getIpAddress(), ifdescr, vlanid);
+                        }
+                    } else if (!vlanid.equals(ifEntry.getTags().get(vlanTag))) {
+                        if (!ifEntry.isChargeable()) {
+                            ifEntry.setChargeable(true);
+                            log.info("source: {} interface ifdescr: {} set chargeable on change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag),
+                                     vlanid);
+                        } else if (ifEntry.getIfAdminStatus() == 1) {
+                            // set chargeable if AdminStatus is UP
+                            ifEntry.setChargeable(false);
+                            log.info("source: {} interface ifdescr: {} clear chargeable on change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag),
+                                     vlanid);
+                        } else {
+                            log.info("source: {} interface ifdescr: {} change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
+                        }
+                    }
+                    ifEntry.getTags().put(vlanTag, vlanid);
+                }
+
+                // get ifInOctets, ifOutOctets
+                SnmpCounter bytes_in = getCounterValue(vb[2], vb[3]);
+                SnmpCounter bytes_out = getCounterValue(vb[4], vb[5]);
+
+                // calculate delta counters
+                if (!source.isSkipDelta() && ifEntry.isUp()) {
+                    ifEntry.setPollInOctets(calcDeltaCounter(source.getIpAddress(), ifdescr, bytes_in, ifEntry.getIfInOctets()));
+                    ifEntry.setPollOutOctets(calcDeltaCounter(source.getIpAddress(), ifdescr, bytes_out, ifEntry.getIfOutOctets()));
+                }
+
+                // save counter values
+                ifEntry.setIfInOctets(bytes_in);
+                ifEntry.setIfOutOctets(bytes_out);
+
+                // add to processed list
+                processedIF.add(ifdescr);
+
+                // update uptime
+                ifEntry.setSysUptime(sysUptime);
+            });
 
         // reset skipDelta
         if (source.isSkipDelta()) {
@@ -411,7 +419,7 @@ public class SnmpPoll {
                 int pos1 = value.indexOf(enterprise);
                 if (vendorId == value.substring(pos1 + enterprise.length() + 1).charAt(0)) {
                     source.getTags().put(vlanOidTag, value);
-                    log.info("source: {} set vlan_oid: {}", source.getIpAddress(),value);
+                    log.info("source: {} set vlan_oid: {}", source.getIpAddress(), value);
                 }
             }
         }
