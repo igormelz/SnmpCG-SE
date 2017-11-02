@@ -102,8 +102,8 @@ public class SnmpCollectorApplication {
                 .routePolicyRef("clusterPolicy")
                 .split(method("snmpSources", "getDownSources"), new NullAggregationStrategy()).parallelProcessing()
                     .bean("snmpPoll", "pollStatus")
-                    .setHeader(HazelcastConstants.OPERATION, constant(HazelcastConstants.PUT_OPERATION))
-                    .to("hazelcast:map:sources?hazelcastInstanceName=hzSnmpCG")
+                    .setHeader(HazelcastConstants.OPERATION, constant("put"))
+                    .to("hazelcast-map:sources?hazelcastInstanceName=hzSnmpCG")
                 .end();
 
             // scheduled poll counters
@@ -111,8 +111,8 @@ public class SnmpCollectorApplication {
                 .routePolicyRef("clusterPolicy")
                 .filter(method("snmpSources", "validateStartPoll"))
                 .split(method("snmpSources", "getReadySources"), new NullAggregationStrategy()).parallelProcessing().executorServiceRef("SnmpCGThreadPoolProfile")
-                .bean("snmpPoll", "pollCounters").setHeader(HazelcastConstants.OPERATION, constant(HazelcastConstants.PUT_OPERATION))
-                .to("hazelcast:map:sources?hazelcastInstanceName=hzSnmpCG").end().log("${bean:snmpSources?method=logEndPoll}").to("direct:storeCdr", "direct:storeTrace").end();
+                .bean("snmpPoll", "pollCounters").setHeader(HazelcastConstants.OPERATION, constant("put"))
+                .to("hazelcast-map:sources?hazelcastInstanceName=hzSnmpCG").end().log("${bean:snmpSources?method=logEndPoll}").to("direct:storeCdr", "direct:storeTrace").end();
 
             // store CDR
             from("direct:storeCdr").routeId("storeCDR").bean("snmpSources", "exportChargingDataRecords").filter(header("countChargingDataRecords").isGreaterThan(0))
