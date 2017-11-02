@@ -143,7 +143,7 @@ public class SnmpPoll {
             // update ifName,ifAlias, ...
             updateIfEntry(ifEntry, event, 7);
 
-            // update sysuptime for first time 
+            // update sysuptime for first time
             if (!isSkip && ifEntry.getSysUptime() == 0l) {
                 ifEntry.setSysUptime(vbs[0].getVariable().toLong());
             }
@@ -213,16 +213,19 @@ public class SnmpPoll {
                 // update status, alias
                 updateIfEntry(ifEntry, event, 6);
 
-                // update vlanID
+                // process vlanID
                 if (vb.length > COUNTER_OIDS.length && vb[COUNTER_OIDS.length] != null) {
                     String vlanid = vb[COUNTER_OIDS.length].getVariable().toString();
-                    // auto charge up iface for first time
+
                     if (!ifEntry.getTags().containsKey(vlanTag)) {
+                        // auto charge up iface for first time
                         if (ifEntry.isUp()) {
                             ifEntry.setChargeable(true);
                             log.info("source: {} interface ifdescr: {} set chargeable on autodiscover vlan: {}", source.getIpAddress(), ifdescr, vlanid);
                         }
+
                     } else if (!vlanid.equals(ifEntry.getTags().get(vlanTag))) {
+                        // processing change pvid
                         if (!ifEntry.isChargeable()) {
                             ifEntry.setChargeable(true);
                             log.info("source: {} interface ifdescr: {} set chargeable on change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag),
@@ -235,7 +238,14 @@ public class SnmpPoll {
                         } else {
                             log.info("source: {} interface ifdescr: {} change vlan: {} to {}", source.getIpAddress(), ifdescr, ifEntry.getTags().get(vlanTag), vlanid);
                         }
+
+                    } else if (ifEntry.getIfAdminStatus() != 1 && ifEntry.isChargeable()) {
+                        // clear charge for adminStatus down
+                        ifEntry.setChargeable(false);
+                        log.info("source: {} interface ifdescr: {} clear chargeable on AdminStatus: Down vlan: {}", source.getIpAddress(), ifdescr, vlanid);
                     }
+                    
+                    // update interface pvid
                     ifEntry.getTags().put(vlanTag, vlanid);
                 }
 
