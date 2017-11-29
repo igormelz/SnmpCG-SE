@@ -38,7 +38,7 @@ import com.hazelcast.core.IMap;
 public class SourceInventoryService {
 
     private static final Logger log = LoggerFactory.getLogger(SourceInventoryService.class);
-    
+
     @Value("${snmpcg.snmpCommunity:public}")
     private String community;
 
@@ -62,7 +62,7 @@ public class SourceInventoryService {
 
     @Value("${snmpcg.sourceVlanOidTag:vlan_oid}")
     private String vlanOidTag;
-    
+
     @Autowired
     private ConcurrentMap<String, SnmpSource> sources;
 
@@ -90,14 +90,14 @@ public class SourceInventoryService {
         config.putIfAbsent("snmpCommunity", community);
         config.putIfAbsent("snmpRetries", retries);
         config.putIfAbsent("snmpTimeout", timeout);
-        
+
         // set vlan OID tag
         for (String skey : (LinkedHashSet<String>)config.get("sourceTagKeys")) {
             if (skey.equalsIgnoreCase(vlanOidTag)) {
                 config.putIfAbsent("vlanOidTag", vlanOidTag);
             }
         }
-        
+
         if (!config.containsKey("cdrTimeStampFormat")) {
             config.put("cdrTimeStampFormat", cdrTimeStampFormat);
             timeStampFormat = new SimpleDateFormat(cdrTimeStampFormat);
@@ -220,11 +220,11 @@ public class SourceInventoryService {
                     }
                 }
             });
-            
+
             exchange.getIn().setBody(answer);
             return;
         }
-        
+
         // return list sources
         exchange.getIn().setBody(sources.values().stream().map(mapSource).collect(Collectors.toList()));
     }
@@ -369,7 +369,7 @@ public class SourceInventoryService {
                 sb.append(ifEntry.getIfIndex()).append(fieldSeparator);
                 sb.append(ifEntry.getIfDescr()).append(fieldSeparator);
                 sb.append(ifEntry.getIfName()).append(fieldSeparator);
-                sb.append(ifEntry.getIfAlias().replace(fieldSeparator.charAt(0), '.')).append(fieldSeparator);
+                sb.append(escapeSeparator(ifEntry.getIfAlias())).append(fieldSeparator);
                 sb.append(ifEntry.getIfAdminStatus()).append(fieldSeparator);
                 sb.append(ifEntry.getIfOperStatus()).append(fieldSeparator);
                 sb.append(ifEntry.getIfInOctets()).append(fieldSeparator);
@@ -396,23 +396,23 @@ public class SourceInventoryService {
                 sb.append(source.getIpAddress()).append(fieldSeparator);
                 sb.append(source.getSysName()).append(fieldSeparator);
                 for (String skey : (LinkedHashSet<String>)config.get("sourceTagKeys")) {
-                    //skip vlan_oid
+                    // skip vlan_oid
                     if (skey.equalsIgnoreCase(vlanOidTag)) {
                         continue;
                     }
                     if (source.getTags().containsKey(skey)) {
-                        sb.append(source.getTags().get(skey).replace(fieldSeparator.charAt(0), '.'));
+                        sb.append(escapeSeparator(source.getTags().get(skey)));
                     }
                     sb.append(fieldSeparator);
                 }
                 sb.append(ifEntry.getIfDescr()).append(fieldSeparator);
                 for (String ikey : (LinkedHashSet<String>)config.get("interfaceTagKeys")) {
                     if (ifEntry.getTags().containsKey(ikey)) {
-                        sb.append(ifEntry.getTags().get(ikey).replace(fieldSeparator.charAt(0), '.'));
+                        sb.append(escapeSeparator(ifEntry.getTags().get(ikey)));
                     }
                     sb.append(fieldSeparator);
                 }
-                sb.append(ifEntry.getIfAlias()).append(fieldSeparator);
+                sb.append(escapeSeparator(ifEntry.getIfAlias())).append(fieldSeparator);
                 // swap in out for egress port
                 if (ifEntry.getChargeFlow() == SnmpConstants.EGRESS) {
                     sb.append(ifEntry.getPollOutOctets()).append(fieldSeparator);
@@ -422,8 +422,8 @@ public class SourceInventoryService {
                     sb.append(ifEntry.getPollOutOctets()).append(fieldSeparator);
                 }
                 sb.append(timeStampFormat.format(source.getPollTime())).append(fieldSeparator);
-                //sb.append(source.getPollDuration()).append(fieldSeparator);
-                sb.append((ifEntry.getPollDuration()==0) ? source.getPollDuration() : ifEntry.getPollDuration()).append(fieldSeparator);
+                // sb.append(source.getPollDuration()).append(fieldSeparator);
+                sb.append((ifEntry.getPollDuration() == 0) ? source.getPollDuration() : ifEntry.getPollDuration()).append(fieldSeparator);
                 sb.append((ifEntry.isUp()) ? 1 : 0);
                 sb.append(System.lineSeparator());
             });
@@ -479,7 +479,7 @@ public class SourceInventoryService {
     public void updateSource(Exchange exchange) {
         String sourceIpAddr = exchange.getIn().getHeader("source", String.class);
         SnmpSource source = sources.get(sourceIpAddr);
-        if (source == null) {
+        if (source == null || ((IMap<String, SnmpSource>)sources).isLocked(sourceIpAddr)) {
             exchange.getIn().setHeader(Exchange.HTTP_RESPONSE_CODE, 204);
             exchange.getIn().setBody(null);
             return;
@@ -515,7 +515,7 @@ public class SourceInventoryService {
             if (updated) {
                 sources.put(sourceIpAddr, source);
                 exchange.getIn().setBody(Collections.singletonMap("Status", "success"));
-                log.info("source:{} updated",sourceIpAddr);
+                log.info("source:{} updated", sourceIpAddr);
             }
         }
     }
@@ -600,7 +600,7 @@ public class SourceInventoryService {
             if (updated) {
                 exchange.getIn().setBody(Collections.singletonMap("Status", "success"));
                 sources.put(sourceIpAddr, source);
-                log.info("source:{} update interface",sourceIpAddr);
+                log.info("source:{} update interface", sourceIpAddr);
             }
         }
 
@@ -630,7 +630,7 @@ public class SourceInventoryService {
     }
 
     public String logEndPoll() {
-        long polltime = polltimer.stop();
+        long polltime = polltimer.taken();
         gaugeSources.submit("gauge.snmp.polltime", (double)polltime);
         DoubleSummaryStatistics stats = getReadySources().stream().collect(Collectors.summarizingDouble(SnmpSource::getPollResponse));
         gaugeSources.submit("gauge.snmp.response.min", stats.getMin());
@@ -646,4 +646,10 @@ public class SourceInventoryService {
         return String.format("completed in %d ms, collected %d counters from %d sources (%.2f cps)", polltime, totalCounters, getReadySources().size(), cps);
     }
 
+    protected String escapeSeparator(String str) {
+        if (str != null && !str.isEmpty()) {
+            return str.replace(fieldSeparator.charAt(0), '.');
+        }
+        return str;
+    }
 }
