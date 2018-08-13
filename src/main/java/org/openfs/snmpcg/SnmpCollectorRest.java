@@ -12,6 +12,8 @@ public class SnmpCollectorRest extends RouteBuilder {
     public void configure() {
         restConfiguration()
             .contextPath("/api")
+            .enableCORS(true)
+            .corsAllowCredentials(true)
             .bindingMode(RestBindingMode.json);
 
         rest("/v1").description("SnmpCG REST service")

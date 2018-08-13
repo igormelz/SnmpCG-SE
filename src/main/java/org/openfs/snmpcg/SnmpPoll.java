@@ -73,6 +73,7 @@ public class SnmpPoll {
     @Handler
     public void pollStatus(Exchange exchange) throws Exception {
         SnmpSource source = exchange.getIn().getBody(SnmpSource.class);
+
         // set Hazelcast Key
         exchange.getIn().setHeader(HazelcastConstants.OBJECT_ID, source.getIpAddress());
 
@@ -131,7 +132,7 @@ public class SnmpPoll {
             }
 
             // validate ifDescr
-            if (event.getColumns()[6] == null) {
+            if (event.getColumns()[6] == null || "".equals(event.getColumns()[6].getVariable().toString())) {
                 log.warn("source: {} no ifDescr for index: {}", source.getIpAddress(), event.getIndex().get(0));
                 counterService.increment("counter.snmp.logWarn");
                 return;
@@ -244,7 +245,7 @@ public class SnmpPoll {
                         ifEntry.setChargeable(false);
                         log.info("source: {} interface ifdescr: {} clear chargeable on AdminStatus: Down vlan: {}", source.getIpAddress(), ifdescr, vlanid);
                     }
-                    
+
                     // update interface pvid
                     ifEntry.getTags().put(vlanTag, vlanid);
                 }

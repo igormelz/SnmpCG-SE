@@ -190,4 +190,5 @@ public final class SnmpSource implements Serializable {
     public void setSysObjectID(String sysObjectID) {
         this.sysObjectID = sysObjectID;
     }
+
 }
